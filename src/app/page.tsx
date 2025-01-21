@@ -1,511 +1,101 @@
-"use client";
+import Image from "next/image";
 
-import React, { useEffect, useRef, useState } from "react";
-import { IfcViewerAPI } from "web-ifc-viewer";
-import { Color } from "three";
+export default function Home() {
+  return (
+    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
+      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
+        <Image
+          className="dark:invert"
+          src="/next.svg"
+          alt="Next.js logo"
+          width={180}
+          height={38}
+          priority
+        />
+        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
+          <li className="mb-2">
+            Get started by editing{" "}
+            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
+              src/app/page.tsx
+            </code>
+            .
+          </li>
+          <li>Save and see your changes instantly.</li>
+        </ol>
 
-interface IfcElementProperties {
-    id: number;
-    [key: string]: string | number | boolean | null;
-}
-
-interface Comment {
-    text: string;
-}
-
-type TabType = "auth" | "register" | "projects" | "viewer";
-
-export default function Viewer() {
-    const [activeTab, setActiveTab] = useState<TabType>("auth");
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-    const [loginData, setLoginData] = useState({ username: "", password: "" });
-    const handleLoginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setLoginData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-    };
-
-    const [registerData, setRegisterData] = useState({ username: "", password: "", email: "" });
-    const handleRegisterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setRegisterData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-    };
-
-    const handleLogin = () => {
-        if (loginData.username.trim() && loginData.password.trim()) {
-            setIsAuthenticated(true);
-            setActiveTab("projects");
-        } else {
-            alert("Введите имя пользователя и пароль");
-        }
-    };
-
-    const handleRegister = () => {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!registerData.username.trim() || !registerData.password.trim() || !registerData.email.trim()) {
-            alert("Заполните все поля для регистрации");
-            return;
-        }
-        if (!emailRegex.test(registerData.email)) {
-            alert("Введите корректный email");
-            return;
-        }
-        alert("Регистрация прошла успешно!");
-        setActiveTab("auth");
-    };
-
-    const containerRef = useRef<HTMLDivElement | null>(null);
-    const viewer = useRef<IfcViewerAPI | null>(null);
-
-    const [viewMode, setViewMode] = useState<"normal" | "elementView">("normal");
-
-    const [isDarkMode, setIsDarkMode] = useState(false);
-
-    const [selectedElement, setSelectedElement] = useState<IfcElementProperties | null>(null);
-
-    const [comments, setComments] = useState<Record<number, Comment[]>>({});
-
-    const [isModalOpen, setIsModalOpen] = useState(false);
-
-    const [newComment, setNewComment] = useState("");
-
-    const [, setModelJson] = useState<string>("");
-
-    const [modalPosition, setModalPosition] = useState(() => {
-        if (typeof window !== "undefined") {
-            return { x: window.innerWidth - 320, y: 100 };
-        }
-        return { x: 100, y: 100 };
-    });
-    const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
-    const [isDragging, setIsDragging] = useState(false);
-
-    useEffect(() => {
-        if (activeTab !== "viewer" || !isAuthenticated) return;
-        if (!containerRef.current || viewer.current) return;
-        viewer.current = new IfcViewerAPI({
-            container: containerRef.current,
-        });
-        viewer.current.grid.setGrid();
-        viewer.current.axes.setAxes();
-        const wasmUrl: string = "../../../";
-        viewer.current.IFC.setWasmPath(wasmUrl);
-        viewer.current.context.getScene().background = new Color("#efeaea");
-        viewer.current.context.getScene().environment = null;
-        return () => {
-            if (viewer.current) {
-                viewer.current.dispose();
-                viewer.current = null;
-            }
-        };
-    }, [activeTab, isAuthenticated]);
-
-    useEffect(() => {
-        function onMouseMove(e: MouseEvent) {
-            if (!isDragging || !dragStart) return;
-            const newX = e.clientX - dragStart.x;
-            const newY = e.clientY - dragStart.y;
-            setModalPosition({ x: newX, y: newY });
-        }
-        function onMouseUp() {
-            setIsDragging(false);
-        }
-        window.addEventListener("mousemove", onMouseMove);
-        window.addEventListener("mouseup", onMouseUp);
-        return () => {
-            window.removeEventListener("mousemove", onMouseMove);
-            window.removeEventListener("mouseup", onMouseUp);
-        };
-    }, [isDragging, dragStart]);
-
-    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file || !viewer.current) return;
-        const fileURL = URL.createObjectURL(file);
-        const model = await viewer.current.IFC.loadIfcUrl(fileURL);
-        viewer.current.axes.dispose();
-        viewer.current.grid.dispose();
-        console.log("IFC file loaded:", file.name);
-        const ifcManager = viewer.current.IFC.loader.ifcManager;
-        const modelID = model.modelID;
-        const IFC_BUILDING_ELEMENT_TYPE = 300;
-        const allItems = await ifcManager.getAllItemsOfType(modelID, IFC_BUILDING_ELEMENT_TYPE, false);
-        console.log("Все элементы модели:", allItems);
-        const allProperties = [];
-        for (const id in allItems) {
-            const numericId = parseInt(id, 10);
-            const properties = await ifcManager.getItemProperties(modelID, numericId);
-            allProperties.push(properties);
-        }
-        console.log("Свойства всех элементов модели:", allProperties);
-        setModelJson(JSON.stringify(allProperties, null, 2));
-    };
-
-    const handleClick = async () => {
-        if (!viewer.current || viewMode === "normal") return;
-        const result = await viewer.current.IFC.selector.pickIfcItem();
-        if (result) {
-            const properties = await viewer.current.IFC.loader.ifcManager.getItemProperties(
-                result.modelID,
-                result.id
-            );
-            if (selectedElement?.id !== properties.id) {
-                setNewComment("");
-            }
-            setSelectedElement(properties);
-            setIsModalOpen(true);
-        } else {
-            clearSelection();
-        }
-    };
-
-    const clearSelection = () => {
-        if (viewer.current) {
-            viewer.current.IFC.unpickIfcItems();
-        }
-        setSelectedElement(null);
-        setIsModalOpen(false);
-    };
-
-    const changeViewMode = (mode: "normal" | "elementView") => {
-        setViewMode(mode);
-        if (mode === "normal") {
-            clearSelection();
-        }
-    };
-
-    const toggleTheme = () => {
-        setIsDarkMode((prevMode) => !prevMode);
-        document.documentElement.setAttribute("data-theme", !isDarkMode ? "dark" : "light");
-    };
-
-    const handleCommentChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-        setNewComment(event.target.value);
-    };
-
-    const saveComment = () => {
-        if (!selectedElement) return;
-        const elementId = selectedElement.id;
-        const commentText = newComment.trim();
-        if (!commentText) return;
-        setComments((prevComments) => {
-            const updatedComments = { ...prevComments };
-            if (!updatedComments[elementId]) {
-                updatedComments[elementId] = [];
-            }
-            updatedComments[elementId].push({ text: commentText });
-            return updatedComments;
-        });
-        setNewComment("");
-    };
-
-    const openSelectedElementJsonWindow = () => {
-        if (!selectedElement) return;
-        const newWindow = window.open("", "SelectedElementData", "width=600,height=400");
-        if (newWindow) {
-            newWindow.document.write(`
-        <html>
-          <head>
-            <title>Данные выбранного элемента (JSON)</title>
-            <style>
-              body {
-                font-family: sans-serif;
-                padding: 10px;
-                background: ${isDarkMode ? "#333" : "#fff"};
-                color: ${isDarkMode ? "#fff" : "#000"};
-              }
-              pre {
-                white-space: pre-wrap;
-                word-wrap: break-word;
-              }
-            </style>
-          </head>
-          <body>
-            <h4>Данные выбранного элемента (JSON):</h4>
-            <pre>${JSON.stringify(selectedElement, null, 2)}</pre>
-          </body>
-        </html>
-      `);
-            newWindow.document.close();
-        }
-    };
-
-    const startDrag = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (e.button !== 0) return;
-        setIsDragging(true);
-        setDragStart({
-            x: e.clientX - modalPosition.x,
-            y: e.clientY - modalPosition.y,
-        });
-    };
-
-    const [selectedProject, setSelectedProject] = useState("");
-    const projects = ["Проект A", "Проект B", "Проект C"];
-
-    const handleSelectProject = (project: string) => {
-        setSelectedProject(project);
-        setActiveTab("viewer");
-    };
-
-    return (
-        <div className={isDarkMode ? "dark-theme" : "light-theme"}>
-            <div
-                style={{
-                    display: "flex",
-                    justifyContent: "flex-end",
-                    gap: "10px",
-                    marginBottom: "10px",
-                }}
-            >
-                {selectedProject && (
-                    <p style={{ margin: "7px 0 0 13px", position: "relative", flexGrow: 1 }}>
-                        <b>{selectedProject}</b>
-                    </p>
-                )}
-                <button
-                    onClick={() => setActiveTab("auth")}
-                    className={activeTab === "auth" ? "active" : ""}
-                    style={{ padding: "8px 16px" }}
-                >
-                    Авторизация
-                </button>
-                <button
-                    onClick={() => setActiveTab("register")}
-                    className={activeTab === "register" ? "active" : ""}
-                    style={{ padding: "8px 16px" }}
-                >
-                    Регистрация
-                </button>
-                <button
-                    onClick={() => setActiveTab("projects")}
-                    className={activeTab === "projects" ? "active" : ""}
-                    style={{ padding: "8px 16px" }}
-                >
-                    Выбор проекта
-                </button>
-                <button
-                    onClick={() => setActiveTab("viewer")}
-                    className={activeTab === "viewer" ? "active" : ""}
-                    style={{ padding: "8px 16px" }}
-                >
-                    Viewer
-                </button>
-            </div>
-            {activeTab === "auth" && (
-                <div style={{ padding: "20px" }}>
-                    <h2>Авторизация</h2>
-                    <div style={{ marginBottom: "10px" }}>
-                        <input
-                            type="text"
-                            name="username"
-                            value={loginData.username}
-                            onChange={handleLoginChange}
-                            placeholder="Имя пользователя"
-                            style={{ padding: "8px", width: "200px" }}
-                        />
-                    </div>
-                    <div style={{ marginBottom: "10px" }}>
-                        <input
-                            type="password"
-                            name="password"
-                            value={loginData.password}
-                            onChange={handleLoginChange}
-                            placeholder="Пароль"
-                            style={{ padding: "8px", width: "200px" }}
-                        />
-                    </div>
-                    <button onClick={handleLogin} style={{ padding: "8px 16px", backgroundColor: "#007bff", color: "#fff" }}>
-                        Войти
-                    </button>
-                </div>
-            )}
-            {activeTab === "register" && (
-                <div style={{ padding: "20px" }}>
-                    <h2>Регистрация</h2>
-                    <div style={{ marginBottom: "10px" }}>
-                        <input
-                            type="text"
-                            name="username"
-                            value={registerData.username}
-                            onChange={handleRegisterChange}
-                            placeholder="Имя пользователя"
-                            style={{ padding: "8px", width: "200px" }}
-                        />
-                    </div>
-                    <div style={{ marginBottom: "10px" }}>
-                        <input
-                            type="password"
-                            name="password"
-                            value={registerData.password}
-                            onChange={handleRegisterChange}
-                            placeholder="Пароль"
-                            style={{ padding: "8px", width: "200px" }}
-                        />
-                    </div>
-                    <div style={{ marginBottom: "10px" }}>
-                        <input
-                            type="email"
-                            name="email"
-                            value={registerData.email}
-                            onChange={handleRegisterChange}
-                            placeholder="Email"
-                            style={{ padding: "8px", width: "200px" }}
-                        />
-                    </div>
-                    <button onClick={handleRegister} style={{ padding: "8px 16px", backgroundColor: "#007bff", color: "#fff" }}>
-                        Зарегистрироваться
-                    </button>
-                </div>
-            )}
-            {activeTab === "projects" && isAuthenticated && (
-                <div style={{ padding: "20px" }}>
-                    <h2>Выбор проекта</h2>
-                    <p>
-                        Текущий пользователь: <b>{loginData.username}</b>
-                    </p>
-                    <ul>
-                        {projects.map((proj) => (
-                            <li key={proj}>
-                                <button
-                                    onClick={() => handleSelectProject(proj)}
-                                    style={{
-                                        backgroundColor: selectedProject === proj ? "#ccc" : "",
-                                        padding: "6px 10px",
-                                        margin: "4px 0",
-                                    }}
-                                >
-                                    {proj}
-                                </button>
-                            </li>
-                        ))}
-                    </ul>
-                    {selectedProject && (
-                        <p>
-                            Выбран проект: <b>{selectedProject}</b>
-                        </p>
-                    )}
-                </div>
-            )}
-            {activeTab === "viewer" && isAuthenticated && (
-                <>
-                    <div
-                        style={{
-                            marginBottom: "10px",
-                            display: "flex",
-                            gap: "10px",
-                            alignItems: "center",
-                        }}
-                    >
-                        <button
-                            className={`button blue-button ${viewMode === "normal" ? "active" : ""}`}
-                            onClick={() => changeViewMode("normal")}
-                        >
-                            Обычный режим
-                        </button>
-                        <button
-                            className={`button ${viewMode === "elementView" ? "active" : ""}`}
-                            onClick={() => changeViewMode("elementView")}
-                        >
-                            Режим просмотра элементов
-                        </button>
-                        <div className="theme-toggler">
-                            <label className={`theme-switch ${isDarkMode ? "active" : ""}`}>
-                                <input type="checkbox" checked={isDarkMode} onChange={toggleTheme} className="theme-checkbox" />
-                                <span className="slider"></span>
-                            </label>
-                            <span className="theme-text">{isDarkMode ? "Тёмная тема" : "Светлая тема"}</span>
-                        </div>
-                    </div>
-                    <label className="custom-file-upload">
-                        <input type="file" accept=".ifc" onChange={handleFileUpload} />
-                        Загрузить файл
-                    </label>
-                    <div
-                        ref={containerRef}
-                        style={{
-                            position: "absolute",
-                            right: "12px",
-                            width: "calc(100% - 24px)",
-                            height: "80vh",
-                            border: "1px solid #ccc",
-                        }}
-                        onClick={handleClick}
-                    ></div>
-                    {isModalOpen && selectedElement && (
-                        <div
-                            className="comment-modal"
-                            style={{
-                                position: "absolute",
-                                left: modalPosition.x,
-                                top: modalPosition.y,
-                                width: 300,
-                                backgroundColor: isDarkMode ? "#444" : "#fff",
-                                color: isDarkMode ? "#fff" : "#000",
-                                border: "1px solid #ccc",
-                                borderRadius: 8,
-                                padding: "10px",
-                                zIndex: 9999,
-                            }}
-                        >
-                            <div
-                                style={{
-                                    cursor: "move",
-                                    padding: "5px",
-                                    borderBottom: "1px solid #ccc",
-                                    marginBottom: "5px",
-                                }}
-                                onMouseDown={startDrag}
-                            >
-                                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                                    <h3 style={{ margin: "10px" }}>Комментарии</h3>
-                                    <button
-                                        className="close"
-                                        onClick={clearSelection}
-                                        style={{
-                                            border: "none",
-                                            fontSize: "16px",
-                                            cursor: "pointer",
-                                            padding: "1.1em",
-                                            margin: "0 10px 0 0",
-                                            width: "20px",
-                                            height: "20px",
-                                            display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                        }}
-                                    >
-                                        &times;
-                                    </button>
-                                </div>
-                            </div>
-                            <textarea
-                                value={newComment}
-                                onChange={handleCommentChange}
-                                placeholder="Введите комментарий..."
-                                style={{
-                                    width: "100%",
-                                    minHeight: "50px",
-                                    marginBottom: "5px",
-                                }}
-                            />
-                            <div style={{ display: "flex", gap: "5px" }}>
-                                <button className="save" onClick={saveComment}>
-                                    Сохранить
-                                </button>
-                                <button className="button" onClick={openSelectedElementJsonWindow}>
-                                    Открыть JSON
-                                </button>
-                            </div>
-                            <div style={{ marginTop: "10px" }}>
-                                <h4>Комментарии:</h4>
-                                <ul>
-                                    {comments[selectedElement.id]?.map((comment, index) => (
-                                        <li key={index}>{comment.text}</li>
-                                    )) || <li>Нет комментариев</li>}
-                                </ul>
-                            </div>
-                        </div>
-                    )}
-                </>
-            )}
+        <div className="flex gap-4 items-center flex-col sm:flex-row">
+          <a
+            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
+            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Image
+              className="dark:invert"
+              src="/vercel.svg"
+              alt="Vercel logomark"
+              width={20}
+              height={20}
+            />
+            Deploy now
+          </a>
+          <a
+            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
+            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Read our docs
+          </a>
         </div>
-    );
+      </main>
+      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
+        <a
+          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
+          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Image
+            aria-hidden
+            src="/file.svg"
+            alt="File icon"
+            width={16}
+            height={16}
+          />
+          Learn
+        </a>
+        <a
+          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
+          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Image
+            aria-hidden
+            src="/window.svg"
+            alt="Window icon"
+            width={16}
+            height={16}
+          />
+          Examples
+        </a>
+        <a
+          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
+          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Image
+            aria-hidden
+            src="/globe.svg"
+            alt="Globe icon"
+            width={16}
+            height={16}
+          />
+          Go to nextjs.org →
+        </a>
+      </footer>
+    </div>
+  );
 }
