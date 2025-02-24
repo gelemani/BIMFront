@@ -11,7 +11,8 @@ const nextConfig: NextConfig = {
         config.plugins.push(
             new CopyPlugin({
                 patterns: [
-                    { from: "public/web-ifc.wasm", to: "static/chunks/" }
+                    { from: "public/web-ifc.wasm", to: "static/chunks/" },
+                    { from: "public/test.ifc", to: "static/chunks/" }
                 ],
             })
         );

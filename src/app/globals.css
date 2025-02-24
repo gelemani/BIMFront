@@ -246,4 +246,5 @@ button.close {
 
 button.close:hover {
     background-color: #c82333;
+    transform: scale(1.05);
 }
