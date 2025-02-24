@@ -2,7 +2,6 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { IfcViewerAPI } from "web-ifc-viewer";
-// Импортируем Color из three для установки фонового цвета напрямую
 import { Color } from "three";
 
 interface IfcElementProperties {
@@ -14,82 +13,62 @@ interface Comment {
     text: string;
 }
 
-// Возможные вкладки
 type TabType = "auth" | "register" | "projects" | "viewer";
 
 export default function Viewer() {
-    // ====================== Состояния для вкладок и авторизации ======================
     const [activeTab, setActiveTab] = useState<TabType>("auth");
     const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-    // Авторизационные данные
     const [loginData, setLoginData] = useState({ username: "", password: "" });
     const handleLoginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setLoginData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     };
 
-    // Данные для регистрации
     const [registerData, setRegisterData] = useState({ username: "", password: "", email: "" });
     const handleRegisterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setRegisterData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     };
 
-    // Авторизация
     const handleLogin = () => {
-        // Простая проверка: поля не должны быть пустыми
         if (loginData.username.trim() && loginData.password.trim()) {
             setIsAuthenticated(true);
-            setActiveTab("projects"); // после авторизации идём на вкладку "выбор проекта"
+            setActiveTab("projects");
         } else {
             alert("Введите имя пользователя и пароль");
         }
     };
 
-    // Регистрация
     const handleRegister = () => {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; // Регулярка для проверки email
-
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!registerData.username.trim() || !registerData.password.trim() || !registerData.email.trim()) {
             alert("Заполните все поля для регистрации");
             return;
         }
-
         if (!emailRegex.test(registerData.email)) {
             alert("Введите корректный email");
             return;
         }
-
         alert("Регистрация прошла успешно!");
-        setActiveTab("auth"); // Переход на вкладку авторизации
+        setActiveTab("auth");
     };
 
-
-    // ====================== Состояния и логика IFC Viewer ======================
     const containerRef = useRef<HTMLDivElement | null>(null);
     const viewer = useRef<IfcViewerAPI | null>(null);
 
-    // Режим просмотра
     const [viewMode, setViewMode] = useState<"normal" | "elementView">("normal");
 
-    // Тёмная/светлая тема
     const [isDarkMode, setIsDarkMode] = useState(false);
 
-    // Выбранный элемент
     const [selectedElement, setSelectedElement] = useState<IfcElementProperties | null>(null);
 
-    // Комментарии
     const [comments, setComments] = useState<Record<number, Comment[]>>({});
 
-    // Модальное окно комментариев
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    // Текст нового комментария
     const [newComment, setNewComment] = useState("");
 
-    // JSON модели (если нужно)
     const [, setModelJson] = useState<string>("");
 
-    // Перетаскивание окна
     const [modalPosition, setModalPosition] = useState(() => {
         if (typeof window !== "undefined") {
             return { x: window.innerWidth - 320, y: 100 };
@@ -99,35 +78,18 @@ export default function Viewer() {
     const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
     const [isDragging, setIsDragging] = useState(false);
 
-    // ====================== Инициализация IFC Viewer ======================
     useEffect(() => {
-        // Инициализируем только если:
-        // 1) вкладка "viewer"
-        // 2) пользователь авторизован
-        // 3) viewer ещё не создан
         if (activeTab !== "viewer" || !isAuthenticated) return;
         if (!containerRef.current || viewer.current) return;
-
         viewer.current = new IfcViewerAPI({
             container: containerRef.current,
         });
-
         viewer.current.grid.setGrid();
         viewer.current.axes.setAxes();
-
-        // Задаём путь к wasm
         const wasmUrl: string = "../../../";
         viewer.current.IFC.setWasmPath(wasmUrl);
-
-        // Пробуем установить голубой фон
-        // viewer.current.context.renderer.renderer.setClearColor("#efeaea", 1);
-
-        // Также напрямую меняем фон сцены (на случай, если что-то мешает)
         viewer.current.context.getScene().background = new Color("#efeaea");
-
-        // Если есть environment, обнуляем
         viewer.current.context.getScene().environment = null;
-
         return () => {
             if (viewer.current) {
                 viewer.current.dispose();
@@ -136,7 +98,6 @@ export default function Viewer() {
         };
     }, [activeTab, isAuthenticated]);
 
-    // ====================== Логика перетаскивания модалки ======================
     useEffect(() => {
         function onMouseMove(e: MouseEvent) {
             if (!isDragging || !dragStart) return;
@@ -155,29 +116,19 @@ export default function Viewer() {
         };
     }, [isDragging, dragStart]);
 
-    // ====================== Загрузка файла .ifc ======================
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file || !viewer.current) return;
-
         const fileURL = URL.createObjectURL(file);
         const model = await viewer.current.IFC.loadIfcUrl(fileURL);
-
-        // Удаляем сетку и оси (по желанию)
         viewer.current.axes.dispose();
         viewer.current.grid.dispose();
-
         console.log("IFC file loaded:", file.name);
-
         const ifcManager = viewer.current.IFC.loader.ifcManager;
         const modelID = model.modelID;
         const IFC_BUILDING_ELEMENT_TYPE = 300;
-
-        // Получаем все элементы типа IFC_BUILDING_ELEMENT
         const allItems = await ifcManager.getAllItemsOfType(modelID, IFC_BUILDING_ELEMENT_TYPE, false);
         console.log("Все элементы модели:", allItems);
-
-        // Собираем их свойства
         const allProperties = [];
         for (const id in allItems) {
             const numericId = parseInt(id, 10);
@@ -185,22 +136,17 @@ export default function Viewer() {
             allProperties.push(properties);
         }
         console.log("Свойства всех элементов модели:", allProperties);
-
-        // Сохраняем в JSON (если нужно)
         setModelJson(JSON.stringify(allProperties, null, 2));
     };
 
-    // ====================== Клик по сцене ======================
     const handleClick = async () => {
         if (!viewer.current || viewMode === "normal") return;
-
         const result = await viewer.current.IFC.selector.pickIfcItem();
         if (result) {
             const properties = await viewer.current.IFC.loader.ifcManager.getItemProperties(
                 result.modelID,
                 result.id
             );
-            // Если выбрали другой элемент, сбрасываем ввод
             if (selectedElement?.id !== properties.id) {
                 setNewComment("");
             }
@@ -211,7 +157,6 @@ export default function Viewer() {
         }
     };
 
-    // Снять выделение
     const clearSelection = () => {
         if (viewer.current) {
             viewer.current.IFC.unpickIfcItems();
@@ -220,7 +165,6 @@ export default function Viewer() {
         setIsModalOpen(false);
     };
 
-    // Переключение режима
     const changeViewMode = (mode: "normal" | "elementView") => {
         setViewMode(mode);
         if (mode === "normal") {
@@ -228,22 +172,20 @@ export default function Viewer() {
         }
     };
 
-    // Переключение темы
     const toggleTheme = () => {
         setIsDarkMode((prevMode) => !prevMode);
         document.documentElement.setAttribute("data-theme", !isDarkMode ? "dark" : "light");
     };
 
-    // Работа с комментариями
     const handleCommentChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
         setNewComment(event.target.value);
     };
+
     const saveComment = () => {
         if (!selectedElement) return;
         const elementId = selectedElement.id;
         const commentText = newComment.trim();
         if (!commentText) return;
-
         setComments((prevComments) => {
             const updatedComments = { ...prevComments };
             if (!updatedComments[elementId]) {
@@ -255,7 +197,6 @@ export default function Viewer() {
         setNewComment("");
     };
 
-    // Открыть JSON
     const openSelectedElementJsonWindow = () => {
         if (!selectedElement) return;
         const newWindow = window.open("", "SelectedElementData", "width=600,height=400");
@@ -287,7 +228,6 @@ export default function Viewer() {
         }
     };
 
-    // Начало перетаскивания
     const startDrag = (e: React.MouseEvent<HTMLDivElement>) => {
         if (e.button !== 0) return;
         setIsDragging(true);
@@ -297,7 +237,6 @@ export default function Viewer() {
         });
     };
 
-    // ====================== Вкладка выбора проекта (заглушка) ======================
     const [selectedProject, setSelectedProject] = useState("");
     const projects = ["Проект A", "Проект B", "Проект C"];
 
@@ -308,7 +247,6 @@ export default function Viewer() {
 
     return (
         <div className={isDarkMode ? "dark-theme" : "light-theme"}>
-            {/* Кнопки вкладок справа */}
             <div
                 style={{
                     display: "flex",
@@ -318,7 +256,7 @@ export default function Viewer() {
                 }}
             >
                 {selectedProject && (
-                    <p style={{margin: "7px 0 0 13px", position: "relative", flexGrow: 1}}>
+                    <p style={{ margin: "7px 0 0 13px", position: "relative", flexGrow: 1 }}>
                         <b>{selectedProject}</b>
                     </p>
                 )}
@@ -351,8 +289,6 @@ export default function Viewer() {
                     Viewer
                 </button>
             </div>
-
-            {/* Вкладка Авторизация */}
             {activeTab === "auth" && (
                 <div style={{ padding: "20px" }}>
                     <h2>Авторизация</h2>
@@ -381,8 +317,6 @@ export default function Viewer() {
                     </button>
                 </div>
             )}
-
-            {/* Вкладка Регистрация */}
             {activeTab === "register" && (
                 <div style={{ padding: "20px" }}>
                     <h2>Регистрация</h2>
@@ -421,12 +355,12 @@ export default function Viewer() {
                     </button>
                 </div>
             )}
-
-            {/* Вкладка Выбор проекта */}
             {activeTab === "projects" && isAuthenticated && (
                 <div style={{ padding: "20px" }}>
                     <h2>Выбор проекта</h2>
-                    <p>Текущий пользователь: <b>{loginData.username}</b></p>
+                    <p>
+                        Текущий пользователь: <b>{loginData.username}</b>
+                    </p>
                     <ul>
                         {projects.map((proj) => (
                             <li key={proj}>
@@ -450,11 +384,8 @@ export default function Viewer() {
                     )}
                 </div>
             )}
-
-            {/* Вкладка 3D Viewer */}
             {activeTab === "viewer" && isAuthenticated && (
                 <>
-                    {/* Панель управления */}
                     <div
                         style={{
                             marginBottom: "10px",
@@ -477,27 +408,16 @@ export default function Viewer() {
                         </button>
                         <div className="theme-toggler">
                             <label className={`theme-switch ${isDarkMode ? "active" : ""}`}>
-                                <input
-                                    type="checkbox"
-                                    checked={isDarkMode}
-                                    onChange={toggleTheme}
-                                    className="theme-checkbox"
-                                />
+                                <input type="checkbox" checked={isDarkMode} onChange={toggleTheme} className="theme-checkbox" />
                                 <span className="slider"></span>
                             </label>
-                            <span className="theme-text">
-                {isDarkMode ? "Тёмная тема" : "Светлая тема"}
-              </span>
+                            <span className="theme-text">{isDarkMode ? "Тёмная тема" : "Светлая тема"}</span>
                         </div>
                     </div>
-
-                    {/* Загрузка IFC-файла */}
                     <label className="custom-file-upload">
                         <input type="file" accept=".ifc" onChange={handleFileUpload} />
                         Загрузить файл
                     </label>
-
-                    {/* Контейнер для 3D-просмотра */}
                     <div
                         ref={containerRef}
                         style={{
@@ -509,8 +429,6 @@ export default function Viewer() {
                         }}
                         onClick={handleClick}
                     ></div>
-
-                    {/* Модальное окно комментариев */}
                     {isModalOpen && selectedElement && (
                         <div
                             className="comment-modal"
@@ -558,7 +476,6 @@ export default function Viewer() {
                                     </button>
                                 </div>
                             </div>
-
                             <textarea
                                 value={newComment}
                                 onChange={handleCommentChange}
