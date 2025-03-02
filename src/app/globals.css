@@ -2,47 +2,70 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Базовые (светлые) переменные */
+:root {
+    --background-color: #E8F5E9; /* Светло-зеленый фон */
+    --text-color: #3E2723;       /* Темно-коричневый текст */
+    --accent-color: #4CAF50;     /* Основной зеленый акцент */
+    --secondary-color: #8D6E63;  /* Коричневый акцент */
+    --button-bg: #C8E6C9;        /* Светло-зеленый для кнопок */
+    --button-hover: #A5D6A7;     /* Чуть темнее при наведении */
+}
+
+/* Переопределения для тёмной темы */
+:root[data-theme="dark"] {
+    --background-color: #333333; /* Более тёмный фон */
+    --text-color: #ffffff;       /* Светлый цвет текста */
+    --accent-color: #4CAF50;     /* Можно оставить или поменять */
+    --secondary-color: #8D6E63;  /* По желанию, можно изменить */
+    --button-bg: #555555;
+    --button-hover: #777777;
+}
+
+body {
+    background-color: var(--background-color);
+    color: var(--text-color);
+    transition: background-color 0.3s, color 0.3s;
+}
+
 .button {
     position: relative;
-    left: 12px;
     padding: 10px 20px;
     font-size: 16px;
     border-radius: 5px;
     border: none;
     cursor: pointer;
-    background-color: #f0f0f0;
-    color: black;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    background-color: var(--button-bg);
+    color: var(--text-color);
     transition: background-color 0.3s, transform 0.2s;
 }
 
 .button:hover {
+    background-color: var(--button-hover);
     transform: scale(1.05);
 }
 
 .button.active {
-    background-color: #4CAF50;
+    background-color: var(--accent-color);
     color: white;
 }
 
-/* Стили для кастомной кнопки загрузки файла */
+/* Кастомная кнопка загрузки файла */
 .custom-file-upload {
     position: relative;
-    left: 12px;
     display: inline-block;
     padding: 10px 20px;
     font-size: 16px;
     cursor: pointer;
-    background-color: #2196F3;
+    background-color: var(--secondary-color);
     color: white;
     border-radius: 5px;
     text-align: center;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     transition: background-color 0.3s, transform 0.2s;
 }
 
 .custom-file-upload:hover {
-    background-color: #1976D2;
+    background-color: var(--accent-color);
     transform: scale(1.05);
 }
 
@@ -50,7 +73,7 @@
     display: none;
 }
 
-/* Стили для переключателя темы */
+/* Переключатель темы */
 .theme-switch {
     position: relative;
     display: inline-block;
@@ -89,44 +112,14 @@
 }
 
 .theme-checkbox:checked + .slider {
-    background-color: #4CAF50;
+    background-color: var(--accent-color);
 }
 
 .theme-checkbox:checked + .slider:before {
     transform: translateX(26px);
 }
 
-.theme-text {
-    font-size: 16px;
-}
-
-.theme-toggler {
-    position: absolute;
-    display: flex;
-    right: 12px;
-    align-items: center;
-    gap: 10px;
-}
-
-
-:root[data-theme='light'] {
-    --background-color: #ffffff;
-    --text-color: #000000;
-}
-
-:root[data-theme='dark'] {
-    --background-color: #000000;
-    --text-color: #ffffff;
-}
-
-body {
-    background-color: var(--background-color);
-    color: var(--text-color);
-    transition: background-color 0.3s, color 0.3s;
-}
-
-
-/* Окно с комментариями */
+/* Стили для окна комментариев */
 .comment-modal {
     position: absolute;
     top: 50px;
@@ -136,43 +129,30 @@ body {
     z-index: 1000;
     max-width: 300px;
     min-width: 200px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    background-color: var(--background-color);
+    border: 1px solid var(--accent-color);
+    color: var(--text-color);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
-/* Фон для модального окна в светлой теме */
-.light-theme .comment-modal {
-    background-color: #fff; /* Белый фон для светлой темы */
-    border: 1px solid #ccc;
-    color: #333;
-}
-
-/* Фон для модального окна в темной теме */
-.dark-theme .comment-modal {
-    background-color: #333; /* Черный фон для темной темы */
-    border: 1px solid #555;
-    color: #fff; /* Белый текст */
-}
-
-/* Стиль для textarea */
+/* Стили для textarea */
 textarea {
     width: 100%;
     height: 120px;
     padding: 10px;
     font-size: 14px;
-    line-height: 1.5;
-    border: 1px solid #ccc;
+    border: 1px solid var(--secondary-color);
     border-radius: 5px;
-    resize: vertical;
-    background-color: #f9f9f9;
-    color: #333;
-    transition: border-color 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+    background-color: #ffffff;
+    color: var(--text-color);
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 textarea:focus {
     outline: none;
-    border-color: #007bff;
-    box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+    border-color: var(--accent-color);
+    box-shadow: 0 0 5px rgba(76, 175, 80, 0.5);
 }
 
 textarea::placeholder {
@@ -180,30 +160,42 @@ textarea::placeholder {
     font-style: italic;
 }
 
-textarea:hover {
-    border-color: #0056b3;
-    background-color: #f0f0f0;
+/* Стили для полей ввода (input) */
+input[type="text"],
+input[type="password"],
+input[type="email"] {
+    padding: 8px;
+    width: 200px;
+    border: 1px solid var(--secondary-color);
+    border-radius: 5px;
+    background-color: #ffffff;
+    color: var(--text-color);
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
 }
 
-textarea:disabled {
-    background-color: #f0f0f0;
-    border-color: #ddd;
-    color: #aaa;
+input[type="text"]::placeholder,
+input[type="password"]::placeholder,
+input[type="email"]::placeholder {
+    color: #888;
+    font-style: italic;
 }
 
-/* Темная тема для textarea */
-.dark-theme textarea {
-    background-color: #444; /* Черный фон для темной темы */
-    color: #fff; /* Белый текст для темной темы */
-    border-color: #555; /* Темный бордер для темной темы */
+/* Переопределения для полей ввода в тёмном режиме */
+:root[data-theme="dark"] input[type="text"],
+:root[data-theme="dark"] input[type="password"],
+:root[data-theme="dark"] input[type="email"],
+:root[data-theme="dark"] textarea {
+    background-color: #424242;
+    color: #ffffff;
+    border: 1px solid #555555;
 }
 
-.dark-theme textarea:hover {
-    background-color: #555; /* Слегка светлее фон при наведении */
-    border-color: #777; /* Темный бордер при наведении */
+:root[data-theme="dark"] input::placeholder,
+:root[data-theme="dark"] textarea::placeholder {
+    color: #cccccc;
 }
 
-/* Стиль для кнопок */
+/* Обновленные стили кнопок */
 button {
     padding: 8px 16px;
     font-size: 14px;
@@ -211,40 +203,17 @@ button {
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.3s ease, transform 0.2s ease;
+    background-color: var(--button-bg);
+    color: var(--text-color);
 }
 
 button:hover {
-    background-color: #007bff;
-    color: white;
+    background-color: var(--button-hover);
     transform: scale(1.05);
 }
 
 button:active {
-    background-color: #0056b3;
+    background-color: var(--accent-color);
     transform: scale(1);
-}
-
-button:focus {
-    outline: none;
-    box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
-}
-
-/* Специфические стили для кнопок "Сохранить" и "Закрыть" */
-button.save {
-    background-color: #28a745;
-    width: 46%;
-}
-
-button.save:hover {
-    background-color: #218838;
-}
-
-button.close {
-    background-color: #dc3545;
-    width: 46%;
-}
-
-button.close:hover {
-    background-color: #c82333;
-    transform: scale(1.05);
+    color: white;
 }
