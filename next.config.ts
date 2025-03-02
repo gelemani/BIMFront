@@ -3,6 +3,8 @@ import CopyPlugin from "copy-webpack-plugin";
 
 const nextConfig: NextConfig = {
     webpack(config) {
+        config.module.exprContextCritical = false;
+
         config.experiments = {
             asyncWebAssembly: true,
             layers: true,
