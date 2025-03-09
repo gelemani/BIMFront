@@ -295,7 +295,7 @@ export default function Viewer() {
         const newWindow = window.open("", "SelectedElementData", "width=600,height=400");
         if (newWindow) {
             newWindow.document.write(`
-        <html>
+        <html lang="ru">
           <head>
             <title>Данные выбранного элемента (JSON)</title>
             <style>
