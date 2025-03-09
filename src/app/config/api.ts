@@ -1,4 +1,4 @@
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://bim-back.vercel.app';
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://bim-back.vercel.app/api/';
 
 export const API_HEADERS = {
     'Content-Type': 'application/json',

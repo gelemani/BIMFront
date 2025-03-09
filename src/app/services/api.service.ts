@@ -1,3 +1,4 @@
+import axios, { AxiosInstance } from 'axios';
 import { API_URL, API_HEADERS, LoginRequest, RegisterRequest, ApiResponse } from '../config/api';
 
 export interface AuthResponse {
@@ -7,34 +8,32 @@ export interface AuthResponse {
 
 class ApiService {
     private authToken: string | null = null;
+    private axiosInstance: AxiosInstance;
 
-    private getHeaders() {
-        return {
-            ...API_HEADERS,
-            ...(this.authToken ? { 'Authorization': `Bearer ${this.authToken}` } : {})
-        };
+    constructor() {
+        this.axiosInstance = axios.create({
+            baseURL: API_URL,
+            headers: API_HEADERS
+        });
+
+        // Add interceptor to add auth token to requests
+        this.axiosInstance.interceptors.request.use((config) => {
+            if (this.authToken) {
+                config.headers.Authorization = `Bearer ${this.authToken}`;
+            }
+            return config;
+        });
     }
 
     async login(data: LoginRequest): Promise<ApiResponse<AuthResponse>> {
         try {
-            const response = await fetch(`${API_URL}/auth/login`, {
-                method: 'POST',
-                headers: this.getHeaders(),
-                body: JSON.stringify(data)
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Ошибка авторизации');
+            const response = await this.axiosInstance.post<ApiResponse<AuthResponse>>('/Auth/login', data);
+            
+            if (response.data.success && response.data.data?.token) {
+                this.authToken = response.data.data.token;
+                localStorage.setItem('authToken', response.data.data.token);
             }
-
-            const result = await response.json();
-            if (result.success && result.data?.token) {
-                this.authToken = result.data.token;
-                // Сохраняем токен в localStorage для сохранения сессии
-                localStorage.setItem('authToken', result.data.token);
-            }
-            return result;
+            return response.data;
         } catch (error) {
             return {
                 success: false,
@@ -45,59 +44,38 @@ class ApiService {
 
     async register(data: RegisterRequest): Promise<ApiResponse<AuthResponse>> {
         try {
-            const response = await fetch(`${API_URL}/auth/register`, {
-                method: 'POST',
-                headers: this.getHeaders(),
-                body: JSON.stringify(data)
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Ошибка регистрации');
+            const response = await this.axiosInstance.post<ApiResponse<AuthResponse>>('/auth/register', data);
+            
+            if (response.data.success && response.data.data?.token) {
+                this.authToken = response.data.data.token;
+                localStorage.setItem('authToken', response.data.data.token);
             }
-
-            const result = await response.json();
-            if (result.success && result.data?.token) {
-                this.authToken = result.data.token;
-                localStorage.setItem('authToken', result.data.token);
-            }
-            return result;
+            return response.data;
         } catch (error) {
             return {
                 success: false,
-                error: error instanceof Error ? error.message : 'Неизвестная ошибка'
+                error: error instanceof Error ? error.message : 'Ошибка регистрации'
             };
         }
     }
 
     async registerCompanyInfo(data: Pick<RegisterRequest, 'companyName' | 'companyPosition'>): Promise<ApiResponse<AuthResponse>> {
         try {
-            const response = await fetch(`${API_URL}/auth/register-company`, {
-                method: 'POST',
-                headers: this.getHeaders(),
-                body: JSON.stringify(data)
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Ошибка регистрации компании');
+            const response = await this.axiosInstance.post<ApiResponse<AuthResponse>>('/auth/register-company-info', data);
+            
+            if (response.data.success && response.data.data?.token) {
+                this.authToken = response.data.data.token;
+                localStorage.setItem('authToken', response.data.data.token);
             }
-
-            const result = await response.json();
-            if (result.success && result.data?.token) {
-                this.authToken = result.data.token;
-                localStorage.setItem('authToken', result.data.token);
-            }
-            return result;
+            return response.data;
         } catch (error) {
             return {
                 success: false,
-                error: error instanceof Error ? error.message : 'Неизвестная ошибка'
+                error: error instanceof Error ? error.message : 'Ошибка регистрации компании'
             };
         }
     }
 
-    // Инициализация токена при загрузке приложения
     initializeAuth() {
         const token = localStorage.getItem('authToken');
         if (token) {
@@ -105,7 +83,6 @@ class ApiService {
         }
     }
 
-    // Выход из системы
     logout() {
         this.authToken = null;
         localStorage.removeItem('authToken');
