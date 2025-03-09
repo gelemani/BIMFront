@@ -13,7 +13,7 @@ interface Comment {
     text: string;
 }
 
-type TabType = "auth" | "register" | "projects" | "viewer";
+type TabType = "auth" | "register" | "register-job-info" | "projects" | "viewer";
 
 export default function Viewer() {
     const [activeTab, setActiveTab] = useState<TabType>("auth");
