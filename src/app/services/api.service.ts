@@ -6,6 +6,8 @@ export interface AuthResponse {
     userId: number;
 }
 
+const isClient = typeof window !== 'undefined';
+
 class ApiService {
     private authToken: string | null = null;
     private axiosInstance: AxiosInstance;
@@ -28,10 +30,11 @@ class ApiService {
     async login(data: LoginRequest): Promise<ApiResponse<AuthResponse>> {
         try {
             const response = await this.axiosInstance.post<ApiResponse<AuthResponse>>('/Auth/login', data);
-            
             if (response.data.success && response.data.data?.token) {
                 this.authToken = response.data.data.token;
-                localStorage.setItem('authToken', response.data.data.token);
+                if (isClient) {
+                    localStorage.setItem('authToken', response.data.data.token);
+                }
             }
             return response.data;
         } catch (error) {
@@ -45,10 +48,11 @@ class ApiService {
     async register(data: RegisterRequest): Promise<ApiResponse<AuthResponse>> {
         try {
             const response = await this.axiosInstance.post<ApiResponse<AuthResponse>>('/auth/register', data);
-            
             if (response.data.success && response.data.data?.token) {
                 this.authToken = response.data.data.token;
-                localStorage.setItem('authToken', response.data.data.token);
+                if (isClient) {
+                    localStorage.setItem('authToken', response.data.data.token);
+                }
             }
             return response.data;
         } catch (error) {
@@ -62,10 +66,11 @@ class ApiService {
     async registerCompanyInfo(data: Pick<RegisterRequest, 'companyName' | 'companyPosition'>): Promise<ApiResponse<AuthResponse>> {
         try {
             const response = await this.axiosInstance.post<ApiResponse<AuthResponse>>('/auth/register-company-info', data);
-            
             if (response.data.success && response.data.data?.token) {
                 this.authToken = response.data.data.token;
-                localStorage.setItem('authToken', response.data.data.token);
+                if (isClient) {
+                    localStorage.setItem('authToken', response.data.data.token);
+                }
             }
             return response.data;
         } catch (error) {
@@ -77,19 +82,25 @@ class ApiService {
     }
 
     initializeAuth() {
-        const token = localStorage.getItem('authToken');
-        if (token) {
-            this.authToken = token;
+        if (isClient) {
+            const token = localStorage.getItem('authToken');
+            if (token) {
+                this.authToken = token;
+            }
         }
     }
 
     logout() {
         this.authToken = null;
-        localStorage.removeItem('authToken');
+        if (isClient) {
+            localStorage.removeItem('authToken');
+        }
     }
 }
 
 export const apiService = new ApiService();
 
-// Инициализируем токен при импорте сервиса
-apiService.initializeAuth(); 
+// Initialize auth only on the client side
+if (isClient) {
+    apiService.initializeAuth();
+} 
