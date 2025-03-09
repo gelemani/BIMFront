@@ -3,6 +3,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { IfcViewerAPI } from "web-ifc-viewer";
 import { Color } from "three";
+import "./styles/ThemeToggler.css";
+import { apiService } from './services/api.service';
 
 interface IfcElementProperties {
     id: number;
@@ -13,7 +15,7 @@ interface Comment {
     text: string;
 }
 
-type TabType = "auth" | "register" | "projects" | "viewer";
+type TabType = "auth" | "register" | "register-company-info" | "projects" | "viewer";
 
 export default function Viewer() {
     const [activeTab, setActiveTab] = useState<TabType>("auth");
@@ -37,25 +39,31 @@ export default function Viewer() {
         email: "",
         password: "",
         confirmPassword: "",
+        companyName: "",
+        companyPosition: "",
     });
     const handleRegisterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setRegisterData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+        setRegisterData((prev: typeof registerData) => ({ ...prev, [e.target.name]: e.target.value }));
     };
 
     // Авторизация
-    const handleLogin = () => {
+    const handleLogin = async () => {
         if (loginData.username.trim() && loginData.password.trim()) {
-            // Здесь запрос к бэкенду...
-            setUserID(1); // Пример ID
-            setIsAuthenticated(true);
-            setActiveTab("projects");
+            const response = await apiService.login(loginData);
+            if (response.success && response.data) {
+                setUserID(response.data.userId);
+                setIsAuthenticated(true);
+                setActiveTab("projects");
+            } else {
+                alert(response.error || "Ошибка авторизации");
+            }
         } else {
             alert("Введите имя пользователя и пароль");
         }
     };
 
     // Регистрация
-    const handleRegister = () => {
+    const handleRegister = async () => {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (
             !registerData.login.trim() ||
@@ -76,10 +84,32 @@ export default function Viewer() {
             alert("Пароли не совпадают");
             return;
         }
-        // Успешная регистрация (запрос к бэкенду)
-        setUserID(2); // Пример ID
-        setIsAuthenticated(true);
-        setActiveTab("projects");
+
+        const response = await apiService.register(registerData);
+        if (response.success) {
+            setActiveTab("register-company-info");
+        } else {
+            alert(response.error || "Ошибка регистрации");
+        }
+    };
+
+    const handleRegisterCompanyInfo = async () => {
+        if (registerData.companyName.trim() && registerData.companyPosition.trim()) {
+            const response = await apiService.registerCompanyInfo({
+                companyName: registerData.companyName,
+                companyPosition: registerData.companyPosition
+            });
+            
+            if (response.success && response.data) {
+                setUserID(response.data.userId);
+                setIsAuthenticated(true);
+                setActiveTab("projects");
+            } else {
+                alert(response.error || "Ошибка регистрации компании");
+            }
+        } else {
+            alert("Заполните все поля для регистрации компании");
+        }
     };
 
     // Viewer
@@ -103,19 +133,21 @@ export default function Viewer() {
 
     // Компонент переключателя темы
     const ThemeToggler = () => (
-        <div style={{ display: "flex", alignItems: "center" }}>
+        <div className="theme-toggler-container">
             <label className={`theme-switch ${isDarkMode ? "active" : ""}`}>
                 <input
                     type="checkbox"
                     checked={isDarkMode}
                     onChange={() => setIsDarkMode((prev) => !prev)}
                     className="theme-checkbox"
+                    aria-label="Toggle dark mode"
+                    title="Toggle between light and dark mode"
                 />
                 <span className="slider"></span>
             </label>
-            <span style={{ marginLeft: "8px" }} className="theme-text">
-        {isDarkMode ? "Тёмная тема" : "Светлая тема"}
-      </span>
+            <span className="theme-text">
+                {isDarkMode ? "Тёмная тема" : "Светлая тема"}
+            </span>
         </div>
     );
 
@@ -316,80 +348,65 @@ export default function Viewer() {
     return (
         <div className={isDarkMode ? "dark-theme" : "light-theme"}>
             {/* ШАПКА: кнопки и toggler справа */}
-            <div
-                style={{
-                    display: "flex",
-                    justifyContent: "flex-end", // все вправо
-                    gap: "10px",
-                    alignItems: "center",
-                    marginBottom: "10px",
-                }}
-            >
+            <div className="header-container">
                 <button
                     onClick={() => setActiveTab("auth")}
-                    className={activeTab === "auth" ? "active" : ""}
-                    style={{ padding: "8px 16px" }}
+                    className={`header-button ${activeTab === "auth" ? "active" : ""}`}
                 >
                     Войти
                 </button>
                 <button
                     onClick={() => setActiveTab("register")}
-                    className={activeTab === "register" ? "active" : ""}
-                    style={{ padding: "8px 16px" }}
+                    className={`header-button ${activeTab === "register" ? "active" : ""}`}
                 >
                     Регистрация
                 </button>
                 <button
                     onClick={() => setActiveTab("projects")}
-                    className={activeTab === "projects" ? "active" : ""}
-                    style={{ padding: "8px 16px" }}
+                    className={`header-button ${activeTab === "projects" ? "active" : ""}`}
                 >
                     Проекты
                 </button>
                 <button
                     onClick={() => setActiveTab("viewer")}
-                    className={activeTab === "viewer" ? "active" : ""}
-                    style={{ padding: "8px 16px" }}
+                    className={`header-button ${activeTab === "viewer" ? "active" : ""}`}
                 >
                     Viewer
                 </button>
-                {/* Тогглер темы */}
                 <ThemeToggler />
             </div>
 
             {/* Вкладка "Авторизация" (центрирована) */}
             {activeTab === "auth" && (
-                <div
-                    style={{
-                        display: "flex",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        minHeight: "calc(100vh - 60px)",
-                    }}
-                >
-                    <div style={{ padding: "20px" }}>
+                <div className="auth-container">
+                    <div className="auth-form">
                         <h2>Авторизация</h2>
-                        <div style={{ marginBottom: "10px" }}>
+                        <div>
                             <input
                                 type="text"
                                 name="username"
                                 value={loginData.username}
                                 onChange={handleLoginChange}
                                 placeholder="Почта или логин"
-                                style={{ padding: "8px", width: "200px" }}
+                                className="form-input"
                             />
                         </div>
-                        <div style={{ marginBottom: "10px" }}>
+                        <div>
                             <input
                                 type="password"
                                 name="password"
                                 value={loginData.password}
                                 onChange={handleLoginChange}
                                 placeholder="Пароль"
-                                style={{ padding: "8px", width: "200px" }}
+                                className="form-input"
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        handleLogin();
+                                    }
+                                }}
                             />
                         </div>
-                        <button onClick={handleLogin} style={{ padding: "8px 16px", color: "#fff" }}>
+                        <button onClick={handleLogin} className="form-button">
                             Войти
                         </button>
                     </div>
@@ -398,94 +415,125 @@ export default function Viewer() {
 
             {/* Вкладка "Регистрация" (центрирована) */}
             {activeTab === "register" && (
-                <div
-                    style={{
-                        display: "flex",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        minHeight: "calc(100vh - 60px)",
-                    }}
-                >
-                    <div style={{ padding: "20px" }}>
+                <div className="auth-container">
+                    <div className="auth-form">
                         <h2>Регистрация</h2>
-                        <div style={{ marginBottom: "10px" }}>
+                        <div>
                             <input
                                 type="text"
                                 name="login"
                                 value={registerData.login}
                                 onChange={handleRegisterChange}
                                 placeholder="Логин"
-                                style={{ padding: "8px", width: "200px" }}
+                                className="form-input"
                             />
                         </div>
-                        <div style={{ marginBottom: "10px" }}>
+                        <div>
                             <input
                                 type="text"
                                 name="userName"
                                 value={registerData.userName}
                                 onChange={handleRegisterChange}
                                 placeholder="Имя"
-                                style={{ padding: "8px", width: "200px" }}
+                                className="form-input"
                             />
                         </div>
-                        <div style={{ marginBottom: "10px" }}>
+                        <div>
                             <input
                                 type="text"
                                 name="userSurname"
                                 value={registerData.userSurname}
                                 onChange={handleRegisterChange}
                                 placeholder="Фамилия"
-                                style={{ padding: "8px", width: "200px" }}
+                                className="form-input"
                             />
                         </div>
-                        <div style={{ marginBottom: "10px" }}>
+                        <div>
                             <input
                                 type="email"
                                 name="email"
                                 value={registerData.email}
                                 onChange={handleRegisterChange}
                                 placeholder="Email"
-                                style={{ padding: "8px", width: "200px" }}
+                                className="form-input"
                             />
                         </div>
-                        <div style={{ marginBottom: "10px" }}>
+                        <div>
                             <input
                                 type="password"
                                 name="password"
                                 value={registerData.password}
                                 onChange={handleRegisterChange}
                                 placeholder="Пароль"
-                                style={{ padding: "8px", width: "200px" }}
+                                className="form-input"
                             />
                         </div>
-                        <div style={{ marginBottom: "10px" }}>
+                        <div>
                             <input
                                 type="password"
                                 name="confirmPassword"
                                 value={registerData.confirmPassword}
                                 onChange={handleRegisterChange}
                                 placeholder="Подтверждение пароля"
-                                style={{ padding: "8px", width: "200px" }}
+                                className="form-input"
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        handleRegister();
+                                    }
+                                }}
                             />
                         </div>
-                        <button onClick={handleRegister} style={{ padding: "8px 16px", color: "#fff" }}>
+                        <button onClick={handleRegister} className="form-button">
                             Зарегистрироваться
                         </button>
                     </div>
                 </div>
             )}
 
+            {/* Вкладка "Регистрация компании" (центрирована) */}
+            {activeTab === "register-company-info" && (
+                <div className="auth-container">
+                    <div className="auth-form">
+                        <h2>Регистрация компании</h2>
+                        <div>
+                            <input
+                                type="text"
+                                name="companyName"
+                                value={registerData.companyName}
+                                onChange={handleRegisterChange}
+                                placeholder="Название компании"
+                                className="form-input"
+                            />
+                        </div>
+                        <div>
+                            <input
+                                type="text"
+                                name="companyPosition"
+                                value={registerData.companyPosition}
+                                onChange={handleRegisterChange}
+                                placeholder="Должность"
+                                className="form-input"
+                            />
+                        </div>
+                        <button
+                            onClick={handleRegisterCompanyInfo}
+                            className="form-button"
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    handleRegisterCompanyInfo();
+                                }
+                            }}
+                            tabIndex={0}
+                        >
+                            Зарегистрироваться
+                        </button>
+                    </div>
+                </div>
+            )}
             {/* Вкладка "Проекты" (центрирована) */}
             {activeTab === "projects" && isAuthenticated && (
-                <div
-                    style={{
-                        display: "flex",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        minHeight: "calc(100vh - 60px)",
-                    }}
-                >
-                    <div style={{ padding: "20px" }}>
+                <div className="auth-container">
+                    <div className="auth-form">
                         <h2>Выбор проекта</h2>
                         <p>
                             Текущий пользователь: <b>{loginData.username}</b>
@@ -495,11 +543,7 @@ export default function Viewer() {
                                 <li key={proj}>
                                     <button
                                         onClick={() => handleSelectProject(proj)}
-                                        style={{
-                                            backgroundColor: selectedProject === proj ? "#ccc" : "",
-                                            padding: "6px 10px",
-                                            margin: "4px 0",
-                                        }}
+                                        className={`header-button ${selectedProject === proj ? "active" : ""}`}
                                     >
                                         {proj}
                                     </button>
@@ -518,14 +562,7 @@ export default function Viewer() {
             {/* Viewer */}
             {activeTab === "viewer" && isAuthenticated && (
                 <>
-                    <div
-                        style={{
-                            marginBottom: "10px",
-                            display: "flex",
-                            gap: "10px",
-                            alignItems: "center",
-                        }}
-                    >
+                    <div className="header-container">
                         <button
                             className={`button blue-button ${viewMode === "normal" ? "active" : ""}`}
                             onClick={() => changeViewMode("normal")}
@@ -545,60 +582,21 @@ export default function Viewer() {
                     </label>
                     <div
                         ref={containerRef}
-                        style={{
-                            position: "absolute",
-                            right: "12px",
-                            width: "calc(100% - 24px)",
-                            height: "80vh",
-                            border: "1px solid #ccc",
-                        }}
+                        className="viewer-container"
                         onClick={handleClick}
                     ></div>
                     {isModalOpen && selectedElement && (
                         <div
-                            className="comment-modal"
+                            className="modal-container"
                             style={{
-                                position: "absolute",
                                 left: modalPosition.x,
                                 top: modalPosition.y,
-                                width: 300,
-                                backgroundColor: isDarkMode ? "#444" : "#fff",
-                                color: isDarkMode ? "#fff" : "#000",
-                                border: "1px solid #ccc",
-                                borderRadius: 8,
-                                padding: "10px",
-                                zIndex: 9999,
                             }}
                         >
-                            <div
-                                style={{
-                                    cursor: "move",
-                                    padding: "5px",
-                                    borderBottom: "1px solid #ccc",
-                                    marginBottom: "5px",
-                                }}
-                                onMouseDown={startDrag}
-                            >
-                                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                                    <h3 style={{ margin: "10px" }}>Комментарии</h3>
-                                    <button
-                                        className="close"
-                                        onClick={clearSelection}
-                                        style={{
-                                            border: "none",
-                                            fontSize: "16px",
-                                            cursor: "pointer",
-                                            padding: "1.25em",
-                                            margin: "0 10px 0 0",
-                                            width: "20px",
-                                            height: "20px",
-                                            display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            color: "white",
-                                            backgroundColor: "rgb(227,79,79)",
-                                        }}
-                                    >
+                            <div className="modal-header" onMouseDown={startDrag}>
+                                <div className="modal-title">
+                                    <h3>Комментарии</h3>
+                                    <button className="modal-close" onClick={clearSelection}>
                                         &times;
                                     </button>
                                 </div>
@@ -607,25 +605,20 @@ export default function Viewer() {
                                 value={newComment}
                                 onChange={(e) => setNewComment(e.target.value)}
                                 placeholder="Введите комментарий..."
-                                style={{
-                                    width: "100%",
-                                    minHeight: "50px",
-                                    marginBottom: "5px",
-                                }}
+                                className="modal-textarea"
                             />
-                            <div style={{ display: "flex", gap: "1px" }}>
+                            <div className="modal-buttons">
                                 <button className="save" onClick={saveComment}>
                                     Сохранить
                                 </button>
                                 <button
-                                    className="button"
+                                    className="button modal-json-button"
                                     onClick={openSelectedElementJsonWindow}
-                                    style={{ marginLeft: "9px", position: "relative" }}
                                 >
                                     Открыть JSON
                                 </button>
                             </div>
-                            <div style={{ marginTop: "10px" }}>
+                            <div className="modal-comments">
                                 <h4>Комментарии:</h4>
                                 <ul>
                                     {comments[selectedElement.id]?.map((comment, index) => (

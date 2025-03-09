@@ -10,20 +10,20 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "ajv": "^6.12.0",
+    "ajv-keywords": "^3.5.2",
     "next": "15.1.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "three": "^0.149.0",
     "web-ifc-three": "^0.0.126",
-    "web-ifc-viewer": "^1.0.218",
-    "ajv": "^6.12.0",
-    "ajv-keywords": "^3.5.2"
+    "web-ifc-viewer": "^1.0.218"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
     "@types/three": "^0.172.0",
     "copy-webpack-plugin": "^12.0.2",
     "eslint": "^9",
