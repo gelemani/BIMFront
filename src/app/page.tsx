@@ -49,18 +49,45 @@ export default function Viewer() {
     // Авторизация
     const handleLogin = async () => {
         if (loginData.username.trim() && loginData.password.trim()) {
-            const response = await apiService.login(loginData);
-            if (response.success && response.data) {
-                setUserID(response.data.userId);
-                setIsAuthenticated(true);
-                setActiveTab("projects");
-            } else {
-                alert(response.error || "Ошибка авторизации");
+            try {
+                console.log("Данные перед запросом:", loginData);
+
+                const response = await apiService.login({
+                    login: loginData.username.trim(),
+                    password: loginData.password.trim(),
+                });
+
+                console.log("Полученный response:", response);
+
+                if (!response) {
+                    console.error("Ошибка: login() вернул undefined!");
+                    alert("Ошибка авторизации: пустой ответ от сервера.");
+                    return;
+                }
+
+                console.log("response.success:", response?.success);
+                console.log("response.data:", response?.data);
+                console.log("response.error:", response?.error);
+
+                if (response.success && response.data) {
+                    console.log("Успешный вход, данные пользователя:", response.data);
+
+                    setUserID(response.data.userId);
+                    setIsAuthenticated(true);
+                    setActiveTab("projects");
+                } else {
+                    console.warn("Ошибка авторизации: response.success === false");
+                    alert(response.error || "Ошибка авторизации");
+                }
+            } catch (error) {
+                console.error("Ошибка при попытке войти:", error);
+                alert("Произошла ошибка при авторизации.");
             }
         } else {
             alert("Введите имя пользователя и пароль");
         }
     };
+
 
     // Регистрация
     const handleRegister = async () => {
@@ -99,7 +126,7 @@ export default function Viewer() {
                 companyName: registerData.companyName,
                 companyPosition: registerData.companyPosition
             });
-            
+
             if (response.success && response.data) {
                 setUserID(response.data.userId);
                 setIsAuthenticated(true);
