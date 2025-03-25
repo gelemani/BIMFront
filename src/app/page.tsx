@@ -3,17 +3,75 @@
 import React, { useEffect, useRef, useState } from "react";
 import { IfcViewerAPI } from "web-ifc-viewer";
 import { Color } from "three";
+import { Box3, Mesh, Vector3} from "three";
 import "./styles/ThemeToggler.css";
 import { apiService } from './services/api.service';
 
-interface IfcElementProperties {
-    id: number;
-    [key: string]: string | number | boolean | null;
-}
-
 interface Comment {
     text: string;
+    elementName: string;
+    elementId: number;
 }
+
+interface IfcElementProperties {
+    id: number;
+    Name?: { value: string };
+    [key: string]: string | number | boolean | null | undefined | { value: string } | { [key: string]: string };
+}
+
+class CustomIfcViewerAPI extends IfcViewerAPI {
+    async checkCollisions(modelID: number): Promise<number[]> {
+        const ifcManager = this.IFC.loader.ifcManager;
+        const IFC_BUILDING_ELEMENT_TYPE = 300;
+        const items = await ifcManager.getAllItemsOfType(modelID, IFC_BUILDING_ELEMENT_TYPE, false);
+        const collisions: number[] = [];
+
+        const grid: Map<string, number[]> = new Map();
+        const cellSize = 10; // Adjust cell size as needed
+
+        const getCellKey = (position: Vector3) => {
+            const x = Math.floor(position.x / cellSize);
+            const y = Math.floor(position.y / cellSize);
+            const z = Math.floor(position.z / cellSize);
+            return `${x},${y},${z}`;
+        };
+
+        for (const item of items) {
+            const mesh = await ifcManager.getItemProperties(modelID, item) as Mesh;
+            const bbox = new Box3().setFromObject(mesh);
+            const center = new Vector3();
+            bbox.getCenter(center);
+            const key = getCellKey(center);
+
+            if (!grid.has(key)) {
+                grid.set(key, []);
+            }
+            grid.get(key)!.push(item);
+        }
+
+        for (const cellItems of grid.values()) {
+            for (let i = 0; i < cellItems.length; i++) {
+                const itemA = cellItems[i];
+                const meshA = await ifcManager.getItemProperties(modelID, itemA) as Mesh;
+                const bboxA = new Box3().setFromObject(meshA);
+
+                for (let j = i + 1; j < cellItems.length; j++) {
+                    const itemB = cellItems[j];
+                    const meshB = await ifcManager.getItemProperties(modelID, itemB) as Mesh;
+                    const bboxB = new Box3().setFromObject(meshB);
+
+                    if (bboxA.intersectsBox(bboxB)) {
+                        collisions.push(itemA, itemB);
+                    }
+                }
+            }
+        }
+
+        return collisions;
+    }
+}
+
+// Тип вкладки (для авторизации, регистрации, Viewer и т. д.)
 
 type TabType = "auth" | "register" | "register-company-info" | "projects" | "viewer";
 
@@ -92,50 +150,49 @@ export default function Viewer() {
     // Регистрация
     const handleRegister = async () => {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
         if (
             !registerData.login.trim() ||
             !registerData.userName.trim() ||
             !registerData.userSurname.trim() ||
             !registerData.email.trim() ||
             !registerData.password.trim() ||
-            !registerData.confirmPassword.trim()
+            !registerData.confirmPassword.trim() ||
+            !registerData.companyName.trim() ||
+            !registerData.companyPosition.trim()
         ) {
             alert("Заполните все поля для регистрации");
             return;
         }
+
         if (!emailRegex.test(registerData.email)) {
             alert("Введите корректный email");
             return;
         }
+
         if (registerData.password !== registerData.confirmPassword) {
             alert("Пароли не совпадают");
             return;
         }
 
-        const response = await apiService.register(registerData);
-        if (response.success) {
-            setActiveTab("register-company-info");
-        } else {
-            alert(response.error || "Ошибка регистрации");
-        }
-    };
-
-    const handleRegisterCompanyInfo = async () => {
-        if (registerData.companyName.trim() && registerData.companyPosition.trim()) {
-            const response = await apiService.registerCompanyInfo({
+        const response = await apiService.register  (
+            {
+                login: registerData.login,
+                userName: registerData.userName,
+                userSurname: registerData.userSurname,
+                email: registerData.email,
+                password: registerData.password,
                 companyName: registerData.companyName,
                 companyPosition: registerData.companyPosition
-            });
-
-            if (response.success && response.data) {
-                setUserID(response.data.userId);
-                setIsAuthenticated(true);
-                setActiveTab("projects");
-            } else {
-                alert(response.error || "Ошибка регистрации компании");
             }
+        );
+
+        if (response.success && response.data) {
+            setUserID(response.data.userId);
+            setIsAuthenticated(true);
+            setActiveTab("projects");
         } else {
-            alert("Заполните все поля для регистрации компании");
+            alert(response.error || "Ошибка регистрации");
         }
     };
 
@@ -205,6 +262,12 @@ export default function Viewer() {
 
     // Загрузка модели
     useEffect(() => {
+        if (viewer.current) {
+            viewer.current.context.getScene().background = new Color(isDarkMode ? "#333333" : "#efeaea");
+        }
+    }, [isDarkMode]);
+
+    useEffect(() => {
         if (activeTab !== "viewer" || !isAuthenticated) return;
         if (!containerRef.current || viewer.current) return;
 
@@ -212,7 +275,6 @@ export default function Viewer() {
         viewer.current.grid.setGrid();
         viewer.current.axes.setAxes();
         viewer.current.IFC.setWasmPath("../../../");
-        // Учитываем тему при первом рендере Viewer
         viewer.current.context.getScene().background = new Color(isDarkMode ? "#333333" : "#efeaea");
 
         return () => {
@@ -221,7 +283,7 @@ export default function Viewer() {
                 viewer.current = null;
             }
         };
-    }, [activeTab, isAuthenticated, isDarkMode]);
+    }, [activeTab, isAuthenticated]);
 
     // Логика перетаскивания модального окна
     useEffect(() => {
@@ -265,7 +327,7 @@ export default function Viewer() {
         const IFC_BUILDING_ELEMENT_TYPE = 300;
 
         const allItems = await ifcManager.getAllItemsOfType(modelID, IFC_BUILDING_ELEMENT_TYPE, false);
-        console.log("Все элементы модели:", allItems);
+        console.log("All model elements:", allItems);
 
         const allProperties = [];
         for (const id in allItems) {
@@ -273,8 +335,20 @@ export default function Viewer() {
             const properties = await ifcManager.getItemProperties(modelID, numericId);
             allProperties.push(properties);
         }
-        console.log("Свойства всех элементов модели:", allProperties);
+        console.log("Properties of all model elements:", allProperties);
         setModelJson(JSON.stringify(allProperties, null, 2));
+
+        // Check for collisions
+
+
+        const customViewer = new CustomIfcViewerAPI({ container: containerRef.current!});
+        const collisions = await customViewer.checkCollisions(modelID);
+        if (collisions.length > 0) {
+            console.warn("Collisions detected:", collisions);
+            alert("Collisions detected in the model!");
+        } else {
+            console.log("No collisions detected.");
+        }
     };
 
     // Клик по сцене (выбор элемента)
@@ -319,13 +393,18 @@ export default function Viewer() {
         const commentText = newComment.trim();
         if (!commentText) return;
 
+        let elementName = "Unknown Element";
+        if (selectedElement.Name && typeof selectedElement.Name === "object" && "value" in selectedElement.Name) {
+            elementName = selectedElement.Name.value as string;
+        }
+
         setComments((prevComments) => {
             const updated = { ...prevComments };
             if (!updated[elementId]) {
                 updated[elementId] = [];
             }
             if (!updated[elementId].some((c) => c.text === commentText)) {
-                updated[elementId].push({ text: commentText });
+                updated[elementId].push({ text: commentText, elementName, elementId });
             }
             return updated;
         });
@@ -370,12 +449,13 @@ export default function Viewer() {
     const handleSelectProject = (project: string) => {
         setSelectedProject(project);
         setActiveTab("viewer");
+
     };
 
     return (
         <div className={isDarkMode ? "dark-theme" : "light-theme"}>
             {/* ШАПКА: кнопки и toggler справа */}
-            <div className="header-container">
+            <div className="top-panel">
                 <button
                     onClick={() => setActiveTab("auth")}
                     className={`header-button ${activeTab === "auth" ? "active" : ""}`}
@@ -510,7 +590,7 @@ export default function Viewer() {
                                 }}
                             />
                         </div>
-                        <button onClick={handleRegister} className="form-button">
+                        <button onClick={() => setActiveTab("register-company-info")} className="form-button">
                             Зарегистрироваться
                         </button>
                     </div>
@@ -543,11 +623,11 @@ export default function Viewer() {
                             />
                         </div>
                         <button
-                            onClick={handleRegisterCompanyInfo}
+                            onClick={handleRegister}
                             className="form-button"
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
-                                    handleRegisterCompanyInfo();
+                                    handleRegister();
                                 }
                             }}
                             tabIndex={0}
@@ -649,7 +729,18 @@ export default function Viewer() {
                                 <h4>Комментарии:</h4>
                                 <ul>
                                     {comments[selectedElement.id]?.map((comment, index) => (
-                                        <li key={index}>{comment.text}</li>
+                                        <li key={index}>
+                                            <strong>
+                                                <a href="#"
+                                                   onClick={() => {
+                                                       if (viewer.current) {
+                                                           viewer.current.IFC.selector.highlightIfcItem(false, comment.elementId as unknown as boolean);
+                                                       }
+                                                   }}>
+                                                    {comment.elementName}
+                                                </a>
+                                            </strong>: {comment.text}
+                                        </li>
                                     )) || <li>Нет комментариев</li>}
                                 </ul>
                             </div>

@@ -31,8 +31,14 @@ class ApiService {
     async login(data: LoginRequest): Promise<ApiResponse<AuthResponse>> {
         try {
             console.log("Отправка запроса на сервер с данными:", data);
-            const response = await this.axiosInstance.post<ApiResponse<AuthResponse>>('/Auth/login', data);
-
+            // const response = await this.axiosInstance.post<ApiResponse<AuthResponse>>('/Auth/login', data);
+            const response: ApiResponse<AuthResponse> = {
+                success: true,
+                data: {
+                    token: "test_token",
+                    userId: 1
+                }
+            }
             console.log("Сырой ответ от сервера:", response); // Логируем весь response
 
             if (!response || !response.data) {
@@ -42,14 +48,14 @@ class ApiService {
 
             console.log("Обработанный ответ:", response.data);
 
-            if (response.data.success && response.data.data?.token) {
-                this.authToken = response.data.data.token;
+            if (response.success && response.data.token) {
+                this.authToken = response.data.token;
                 if (isClient) {
-                    localStorage.setItem('authToken', response.data.data.token);
+                    localStorage.setItem('authToken', response.data.token);
                 }
             }
 
-            return response.data;
+            return response;
         } catch (error: unknown) {
             console.error("Ошибка при запросе:", error);
             return {
@@ -59,23 +65,41 @@ class ApiService {
         }
     }
 
-    // Метод для регистрации
-    async register(data: RegisterRequest): Promise<ApiResponse<AuthResponse>> {
+    async register(
+        userData: RegisterRequest,
+        companyData?: { companyName: string; companyPosition: string }
+    ): Promise<ApiResponse<{ userId: number; token?: string }>> {
         try {
-            console.log("Данные для регистрации:", data); // Логируем данные для регистрации
-            const response = await this.axiosInstance.post<ApiResponse<AuthResponse>>('/auth/register', data);
-            console.log("Ответ от сервера:", response.data);
+            // Регистрация пользователя
+            console.log("Данные для регистрации пользователя:", userData);
+            const userResponse = await this.axiosInstance.post<ApiResponse<AuthResponse>>('/auth/register', userData);
+            console.log("Ответ от сервера (пользователь):", userResponse.data);
 
-            if (response.data.success && response.data.data?.token) {
-                this.authToken = response.data.data.token;
-                if (isClient) {
-                    localStorage.setItem('authToken', response.data.data.token);
-                }
+            if (!userResponse.data.success || !userResponse.data.data?.token) {
+                return { success: false, error: userResponse.data.error || "Ошибка регистрации пользователя" };
             }
 
-            return response.data;
+            this.authToken = userResponse.data.data.token;
+            if (isClient) {
+                localStorage.setItem('authToken', this.authToken);
+            }
+
+            // Если данные компании предоставлены, регистрируем компанию
+            if (companyData) {
+                console.log("Данные для регистрации компании:", companyData);
+                const companyResponse = await this.axiosInstance.post<ApiResponse<{ userId: number }>>('/company/register', companyData);
+                console.log("Ответ от сервера (компания):", companyResponse.data);
+
+                if (!companyResponse.data.success || !companyResponse.data.data?.userId) {
+                    return { success: false, error: companyResponse.data.error || "Ошибка регистрации компании" };
+                }
+
+                return { success: true, data: { userId: companyResponse.data.data.userId, token: this.authToken } };
+            }
+
+            return { success: true, data: { userId: userResponse.data.data.userId, token: this.authToken } };
         } catch (error) {
-            console.log("Ошибка регистрации:", error);
+            console.log("Ошибка при регистрации:", error);
             return {
                 success: false,
                 error: error instanceof Error ? error.message : 'Ошибка регистрации'
@@ -100,23 +124,6 @@ class ApiService {
             localStorage.removeItem('authToken');
         }
     }
-
-    async registerCompanyInfo(data: { companyName: string; companyPosition: string }): Promise<ApiResponse<{ userId: number }>> {
-        try {
-            console.log("Данные для регистрации компании:", data);
-            const response = await this.axiosInstance.post<ApiResponse<{ userId: number }>>('/company/register', data);
-            console.log("Ответ от сервера:", response.data);
-
-            return response.data;
-        } catch (error) {
-            console.log("Ошибка регистрации компании:", error);
-            return {
-                success: false,
-                error: error instanceof Error ? error.message : 'Ошибка регистрации компании'
-            };
-        }
-    }
-
 }
 
 export const apiService = new ApiService();
