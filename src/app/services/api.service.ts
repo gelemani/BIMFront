@@ -31,15 +31,8 @@ class ApiService {
     async login(data: LoginRequest): Promise<ApiResponse<AuthResponse>> {
         try {
             console.log("Отправка запроса на сервер с данными:", data);
-            // const response = await this.axiosInstance.post<ApiResponse<AuthResponse>>('/Auth/login', data);
-            const response: ApiResponse<AuthResponse> = {
-                success: true,
-                data: {
-                    token: "test_token",
-                    userId: 1
-                }
-            }
-            console.log("Сырой ответ от сервера:", response); // Логируем весь response
+            const response = await this.axiosInstance.post<ApiResponse<AuthResponse>>('/Auth/login', data);
+            console.log("Сырой ответ от сервера:", response);
 
             if (!response || !response.data) {
                 console.error("Ошибка: сервер не вернул данных!");
@@ -48,16 +41,24 @@ class ApiService {
 
             console.log("Обработанный ответ:", response.data);
 
-            if (response.success && response.data.token) {
-                this.authToken = response.data.token;
+            if (response.data.success && response.data.data) {
+                this.authToken = response.data.data.token;
                 if (isClient) {
-                    localStorage.setItem('authToken', response.data.token);
+                    localStorage.setItem('authToken', response.data.data.token);
                 }
             }
 
-            return response;
+            return response.data;
         } catch (error: unknown) {
             console.error("Ошибка при запросе:", error);
+            if (axios.isAxiosError(error)) {
+                if (error.response?.status === 401) {
+                    return {
+                        success: false,
+                        error: "Неавторизованный доступ. Пожалуйста, проверьте свои учетные данные."
+                    };
+                }
+            }
             return {
                 success: false,
                 error: axios.isAxiosError(error) ? error.response?.data?.message || error.message : 'Неизвестная ошибка'
@@ -100,6 +101,19 @@ class ApiService {
             return { success: true, data: { userId: userResponse.data.data.userId, token: this.authToken } };
         } catch (error) {
             console.log("Ошибка при регистрации:", error);
+            if (axios.isAxiosError(error)) {
+                if (error.response?.status === 409) {
+                    return {
+                        success: false,
+                        error: "Пользователь с таким email уже существует"
+                    };
+                } else if (error.response?.status === 401) {
+                    return {
+                        success: false,
+                        error: "Неавторизованный доступ. Пожалуйста, войдите в систему."
+                    };
+                }
+            }
             return {
                 success: false,
                 error: error instanceof Error ? error.message : 'Ошибка регистрации'

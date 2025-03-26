@@ -19,57 +19,65 @@ interface IfcElementProperties {
     [key: string]: string | number | boolean | null | undefined | { value: string } | { [key: string]: string };
 }
 
-class CustomIfcViewerAPI extends IfcViewerAPI {
-    async checkCollisions(modelID: number): Promise<number[]> {
-        const ifcManager = this.IFC.loader.ifcManager;
-        const IFC_BUILDING_ELEMENT_TYPE = 300;
-        const items = await ifcManager.getAllItemsOfType(modelID, IFC_BUILDING_ELEMENT_TYPE, false);
-        const collisions: number[] = [];
+// class CustomIfcViewerAPI extends IfcViewerAPI {
+//     async checkCollisions(modelID: number): Promise<number[]> {
+//         const ifcManager = this.IFC.loader.ifcManager;
+//         const IFC_BUILDING_ELEMENT_TYPE = 300;
+//
+//         console.log("Model ID:", modelID);
+//         console.log("IFC Building Element Type:", IFC_BUILDING_ELEMENT_TYPE);
+//
+        // const items = await ifcManagimage.pnger.getAllItemsOfType(modelID, IFC_BUILDING_ELEMENT_TYPE, false);
+        // console.log("Items retrieved:", items);
+        //
+        // const collisions: number[] = [];
+        //
+        // const grid: Map<string, number[]> = new Map();
+        // const cellSize = 10; // Adjust cell size as needed
+        //
+        // const getCellKey = (position: Vector3) => {
+        //     const x = Math.floor(position.x / cellSize);
+        //     const y = Math.floor(position.y / cellSize);
+        //     const z = Math.floor(position.z / cellSize);
+        //     return `${x},${y},${z}`;
+        // };
+        //
+        // for (const item of items) {
+        //     const geometry = await ifcManager.getItemProperties(modelID, item);
+        //     const mesh = geometry?.mesh;
+        //     if (!mesh) continue;
+        //     const bbox = new Box3().setFromObject(mesh);
+        //     const center = new Vector3();
+        //     bbox.getCenter(center);
+        //     const key = getCellKey(center);
+        //
+        //     if (!grid.has(key)) {
+        //         grid.set(key, []);
+        //     }
+        //     grid.get(key)!.push(item);
+        // }
 
-        const grid: Map<string, number[]> = new Map();
-        const cellSize = 10; // Adjust cell size as needed
-
-        const getCellKey = (position: Vector3) => {
-            const x = Math.floor(position.x / cellSize);
-            const y = Math.floor(position.y / cellSize);
-            const z = Math.floor(position.z / cellSize);
-            return `${x},${y},${z}`;
-        };
-
-        for (const item of items) {
-            const mesh = await ifcManager.getItemProperties(modelID, item) as Mesh;
-            const bbox = new Box3().setFromObject(mesh);
-            const center = new Vector3();
-            bbox.getCenter(center);
-            const key = getCellKey(center);
-
-            if (!grid.has(key)) {
-                grid.set(key, []);
-            }
-            grid.get(key)!.push(item);
-        }
-
-        for (const cellItems of grid.values()) {
-            for (let i = 0; i < cellItems.length; i++) {
-                const itemA = cellItems[i];
-                const meshA = await ifcManager.getItemProperties(modelID, itemA) as Mesh;
-                const bboxA = new Box3().setFromObject(meshA);
-
-                for (let j = i + 1; j < cellItems.length; j++) {
-                    const itemB = cellItems[j];
-                    const meshB = await ifcManager.getItemProperties(modelID, itemB) as Mesh;
-                    const bboxB = new Box3().setFromObject(meshB);
-
-                    if (bboxA.intersectsBox(bboxB)) {
-                        collisions.push(itemA, itemB);
-                    }
-                }
-            }
-        }
-
-        return collisions;
-    }
-}
+//         for (const cellItems of grid.values()) {
+//             for (let i = 0; i < cellItems.length; i++) {
+//                 const itemA = cellItems[i];
+//                 const meshA = await ifcManager.getItemProperties(modelID, itemA) as Mesh;
+//                 const bboxA = new Box3().setFromObject(meshA);
+//
+//                 for (let j = i + 1; j < cellItems.length; j++) {
+//                     const itemB = cellItems[j];
+//                     const meshB = await ifcManager.getItemProperties(modelID, itemB) as Mesh;
+//                     const bboxB = new Box3().setFromObject(meshB);
+//
+//                     if (bboxA.intersectsBox(bboxB)) {
+//                         collisions.push(itemA, itemB);
+//                     }
+//                 }
+//             }
+//         }
+//
+//         return collisions;
+//     }
+// }
 
 // Тип вкладки (для авторизации, регистрации, Viewer и т. д.)
 
