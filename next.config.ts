@@ -22,6 +22,8 @@ const nextConfig: NextConfig = {
         return config;
     },
     experimental: {
+        //@ts-expect-error
+        appDir: true,
         turbo: {
             // ...
         },

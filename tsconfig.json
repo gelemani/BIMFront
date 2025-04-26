@@ -50,6 +50,10 @@
     "incremental": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
+    "baseUrl": ".",         // говорит, что отталкиваемся от корня проекта
+    "paths": {
+      "@/*": ["src/*"]      // теперь "@/app/services/api.service" = "src/app/services/api.service"
+    },
     "plugins": [
       {
         "name": "next"
