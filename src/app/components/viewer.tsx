@@ -2,6 +2,8 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { IfcViewerAPI } from "web-ifc-viewer";
+import io from "socket.io-client";
+const socket = io("http://localhost:3002"); // или твой прод-адрес
 // import { Color } from "three";
 // import "./styles/ThemeToggler.css";
 // import { apiService } from "@services/api.service"; // Здесь ты подставляешь свой правильный путь
@@ -18,7 +20,7 @@ interface IfcElementProperties {
     [key: string]: string | number | boolean | null | undefined | { value: string } | { [key: string]: string };
 }
 
-const Viewer = ({isAuthenticated}: { isAuthenticated: boolean, selectedProject?: string }) => {
+const Viewer = ({ isAuthenticated, file }: { isAuthenticated: boolean; file?: File | null }) => {
     const [selectedElement, setSelectedElement] = useState<IfcElementProperties | null>(null);
     const [comments, setComments] = useState<Record<number, Comment[]>>({});
     const [newComment, setNewComment] = useState("");
@@ -54,15 +56,39 @@ const Viewer = ({isAuthenticated}: { isAuthenticated: boolean, selectedProject?:
             viewer.current.grid.setGrid();
             viewer.current.axes.setAxes();
             viewer.current.IFC.setWasmPath("../../../");
-
-            return () => {
-                if (viewer.current) {
-                    viewer.current.dispose();
-                    viewer.current = null;
-                }
-            };
         }
-    }, [isAuthenticated]);
+
+        if (file && viewer.current) {
+            const fileURL = URL.createObjectURL(file);
+            viewer.current.IFC.loadIfcUrl(fileURL);
+        }
+
+        return () => {
+            if (viewer.current) {
+                viewer.current.dispose();
+                viewer.current = null;
+            }
+        };
+    }, [isAuthenticated, file]);
+
+    useEffect(() => {
+        const sessionId = "demo-project-room"; // можно сделать динамическим
+        socket.emit("join-room", sessionId);
+
+        socket.on("element-selected", async (element: { modelID: number; id: number }) => {
+            if (viewer.current) {
+                try {
+                    await viewer.current.IFC.selector.highlightIfcItemsByID(element.modelID, [element.id], true, true);
+                } catch (error) {
+                    console.error("Error highlighting IFC item:", error);
+                }
+            }
+        });
+
+        return () => {
+            socket.off("element-selected");
+        };
+    }, []);
 
     const startDrag = (e: React.MouseEvent<HTMLDivElement>) => {
         if (e.button !== 0) return;

@@ -1,10 +1,15 @@
 import axios, { AxiosInstance } from 'axios';
-import { API_URL, API_HEADERS, LoginRequest, RegisterRequest, ApiResponse } from '../config/api';
+import {
+    API_URL,
+    API_HEADERS,
+    LoginRequest,
+    RegisterRequest,
+    AuthResponse,
+    ApiResponse,
+    Project,
+    ProjectFile
+} from '../config/api';
 
-export interface AuthResponse {
-    token: string;
-    userId: number;
-}
 
 const isClient = typeof window !== 'undefined';
 
@@ -45,6 +50,7 @@ class ApiService {
                 this.authToken = response.data.data.token;
                 if (isClient) {
                     localStorage.setItem('authToken', response.data.data.token);
+                    localStorage.setItem('userId', String(response.data.data.userId)); // Сохраняем userId в localStorage
                 }
             }
 
@@ -136,6 +142,63 @@ class ApiService {
         this.authToken = null;
         if (isClient) {
             localStorage.removeItem('authToken');
+        }
+    }
+
+    async getUserProjects(userId: number): Promise<ApiResponse<Project[]>> {
+        try {
+            const response = await this.axiosInstance.get<ApiResponse<Project[]>>(`/Project?userId=${userId}`);
+            console.log("Полученные проекты:", response.data);
+            return response.data;
+        } catch (error) {
+            console.error("Ошибка при получении проектов:", error);
+            return {
+                success: false,
+                error: axios.isAxiosError(error) ? error.response?.data?.message || error.message : 'Неизвестная ошибка',
+            };
+        }
+    }
+
+    async getUserProjectFiles(userId: number, projectId: number): Promise<ApiResponse<ProjectFile[]>> {
+        try {
+            const response = await this.axiosInstance.get(`/Project/${projectId}/files?userId=${userId}`);
+            const data = response.data;
+
+            console.log("Полученные файлы проекта:", data);
+
+            // Если API вернул просто массив файлов, оборачиваем вручную
+            if (Array.isArray(data)) {
+                return {
+                    success: true,
+                    data,
+                };
+            }
+
+            // Если API вернул стандартный ApiResponse
+            if (data.success !== undefined) {
+                return data;
+            }
+
+            // Иначе формат неожиданный
+            return {
+                success: false,
+                error: "Неверный формат ответа от сервера",
+            };
+        } catch (error: unknown) {
+            console.error("Ошибка при получении файлов проекта:", error);
+
+            if (axios.isAxiosError(error)) {
+                console.error("Server error details:", error.response);
+                return {
+                    success: false,
+                    error: error.message || "Неизвестная ошибка",
+                };
+            }
+
+            return {
+                success: false,
+                error: "Неизвестная ошибка",
+            };
         }
     }
 }

@@ -26,8 +26,34 @@ export interface RegisterRequest {
     companyPosition: string;
 }
 
+export interface AuthResponse {
+    token: string;
+    userId: number;
+}
+
 export interface ApiResponse<T> {
     success: boolean;
     data?: T;
     error?: string;
-} 
+}
+
+
+export interface ProjectFile {
+    id: number;
+    projectId: number;
+    fileName: string;
+    fileData: string; // base64 or omitted on frontend
+    createdAt: string;
+    lastModified: string;
+    contentType: string;
+}
+
+export interface Project {
+    id: number;
+    userId: number;
+    title: string;
+    createdAt: string;
+    lastModified: string;
+    accessLevel: string;
+    projectFiles: ProjectFile[];
+}
