@@ -5,21 +5,6 @@ import { apiService } from "@/app/services/api.service";
 import {Project, ProjectFile} from "@/app/config/api";
 import Viewer from "../components/viewer";
 
-const getFileIcon = (type: string) => {
-    switch (type) {
-        case "IFC":
-            return "🏗️";
-        case "Excel":
-            return "📊";
-        case "Word":
-            return "📄";
-        case "Archive":
-            return "🗜️";
-        default:
-            return "📁";
-    }
-};
-
 const Page = (): React.JSX.Element => {
     const [uploadedFile, setUploadedFile] = useState<File | null>(null);
     const [projectFiles, setProjectFiles] = useState<ProjectFile[]>([]);
@@ -124,76 +109,96 @@ const Page = (): React.JSX.Element => {
             >
                 <span style={{marginLeft: '4px'}}>SodaBIM</span>
             </div>
-            <div className="flex justify-center mb-8">
-                <input
-                    style={{marginTop: "44px"}}
-                    type="text"
-                    placeholder="Поиск объекта..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="px-4 py-2 pr-10 w-full rounded-lg border border-gray-300 text-black"
-                />
-            </div>
-            {filteredFiles.length === 0 && (
-                <p className="text-red-500">Нет загруженных файлов или произошла ошибка загрузки.</p>
-            )}
-            {Object.entries(projectGroups).map(([projectId, files]) => {
-                const numericProjectId = Number(projectId);
-                const projectTitle = projects.find(p => p.id === numericProjectId)?.title || `#${numericProjectId}`;
-                return (
-                    <div key={projectId} className="mb-8">
-                        <h3 className="text-xl font-semibold mb-3">Проект: {projectTitle}</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {files.map((file, index) => (
-                                <div
-                                    key={index}
-                                    className="p-4 rounded-lg border"
-                                    style={{
-                                        backgroundColor: "var(--button-bg)",
-                                        borderColor: "var(--button-hover)",
-                                    }}
-                                >
-                                    <div className="flex items-center space-x-3">
-                                        <span className="text-2xl">{getFileIcon(file.contentType)}</span>
-                                        <div>
-                                            <h3 className="text-lg font-semibold">{file.fileName}</h3>
-                                            <p className="text-sm"
-                                               style={{color: "var(--secondary-color)"}}>{file.contentType}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                );
-            })}
 
-            <div className="mt-10">
-                <label className="block mb-2 text-lg font-medium">Загрузить новый файл:</label>
-                <input
-                    type="file"
-                    className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4
-                               file:rounded-full file:border-0 file:text-sm file:font-semibold
-                               file:bg-blue-500 file:text-white hover:file:bg-blue-600"
-                    onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) setUploadedFile(file);
-                    }}
-                />
-                {uploadedFile && (
-                    <div className="mt-3 text-sm">
-                        Выбранный файл: <strong>{uploadedFile.name}</strong>
+            <div className="relative w-full flex items-center justify-center mb-8" style={{ marginTop: "44px" }}>
+                <h3 className="absolute left-0 text-xl font-semibold">
+                    Проект: {projects.find(p => p.id === 1)?.title || "#1"}
+                </h3>
+                <div className="mx-auto flex items-center gap-4">
+                    <input
+                        type="text"
+                        placeholder="Поиск объекта..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="px-4 py-2 pr-10 w-full max-w-md rounded-lg border border-gray-300 text-black"
+                    />
+                    <div className="mt-0 flex items-center">
+                        <label
+                            htmlFor="file-upload"
+                            title="Добавить файл"
+                            style={{
+                                cursor: "pointer",
+                                fontSize: "28px",
+                                color: "#3B82F6",
+                                position: "relative",
+                                top: "-2px"
+                            }}
+                        >
+                            +
+                        </label>
+                        <input
+                            id="file-upload"
+                            type="file"
+                            className="hidden"
+                            onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) setUploadedFile(file);
+                            }}
+                        />
+                    </div>
+                </div>
+            </div>
+                {Object.entries(projectGroups).length === 0 ? (
+                    <p className="text-red-500 mb-6">Нет файлов, соответствующих поиску.</p>
+                ) : (
+                    Object.entries(projectGroups).map(([projectId, files]) => {
+                        // const numericProjectId = Number(projectId);
+                        // const projectTitle = projects.find(p => p.id === numericProjectId)?.title || `#${numericProjectId}`;
+
+                        return (
+                            <div key={projectId} className="mb-8">
+                                {/*<h3 className="text-xl font-semibold mb-3" style={{marginTop: "44px"}}>*/}
+                                {/*    Проект: {projectTitle}*/}
+                                {/*</h3>*/}
+                                <div>
+                                    <div className="grid grid-cols-4 font-semibold border-b pb-2 mb-2">
+                                        <div>Имя файла</div>
+                                        <div>Дата изменения</div>
+                                        <div>Тип</div>
+                                        <div>Данные</div>
+                                    </div>
+                                    {files.length === 0 ? (
+                                        <p className="text-red-500 mb-6">Нет файлов в этом проекте.</p>
+                                    ) : (
+                                        files.map((file, index) => (
+                                            <div
+                                                key={index}
+                                                className="grid grid-cols-4 items-center p-2 rounded-lg border hover:bg-gray-100 transition"
+                                                style={{
+                                                    backgroundColor: "var(--button-bg)",
+                                                    borderColor: "var(--button-hover)",
+                                                }}
+                                            >
+                                                <div>{file.fileName}</div>
+                                                <div>{new Date(file.lastModified).toLocaleString()}</div>
+                                                <div>{file.contentType}</div>
+                                                <div className="truncate">{file.fileData}</div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })
+                )}
+
+                {uploadedFile?.name.toLowerCase().endsWith(".ifc") && (
+                    <div className="mt-10">
+                        <Viewer isAuthenticated={true} file={uploadedFile}/>
                     </div>
                 )}
             </div>
+            );
+            };
 
-            {uploadedFile?.name.toLowerCase().endsWith(".ifc") && (
-                <div className="mt-10">
-                    <Viewer isAuthenticated={true} file={uploadedFile}/>
-                </div>
-            )}
-        </div>
-    );
-};
-
-export default Page;
+            export default Page;

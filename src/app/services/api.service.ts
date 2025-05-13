@@ -159,6 +159,37 @@ class ApiService {
         }
     }
 
+    async PostProjectFile(
+        projectId: number,
+        file: File,
+        userId: number
+    ): Promise<ApiResponse<ProjectFile>> {
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('userId', String(userId));
+
+            const response = await this.axiosInstance.post<ApiResponse<ProjectFile>>(
+                `/Project/${projectId}/files`,
+                formData,
+                {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
+                }
+            );
+
+            console.log("Полученный файл:", response.data);
+            return response.data;
+        } catch (error) {
+            console.error("Ошибка при загрузке файла:", error);
+            return {
+                success: false,
+                error: axios.isAxiosError(error) ? error.response?.data?.message || error.message : 'Неизвестная ошибка',
+            };
+        }
+    }
+
     async getUserProjectFiles(userId: number, projectId: number): Promise<ApiResponse<ProjectFile[]>> {
         try {
             const response = await this.axiosInstance.get(`/Project/${projectId}/files?userId=${userId}`);
@@ -198,6 +229,20 @@ class ApiService {
             return {
                 success: false,
                 error: "Неизвестная ошибка",
+            };
+        }
+    }
+
+    async DownloadFile(fileId: number): Promise<ApiResponse<string>> {
+        try {
+            const response = await this.axiosInstance.get<ApiResponse<string>>(`/ProjectFile/${fileId}/download`);
+            console.log("Полученный файл:", response.data);
+            return response.data;
+        } catch (error) {
+            console.error("Ошибка при загрузке файла:", error);
+            return {
+                success: false,
+                error: axios.isAxiosError(error) ? error.response?.data?.message || error.message : 'Неизвестная ошибка',
             };
         }
     }
