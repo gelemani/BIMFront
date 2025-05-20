@@ -9,12 +9,13 @@ import {
     Project,
     ProjectFile
 } from '../config/api';
+import {file} from "jszip";
 
 
 const isClient = typeof window !== 'undefined';
 
 class ApiService {
-    private authToken: string | null = null;
+    private authToken: string | null | undefined = null;
     private axiosInstance: AxiosInstance;
 
     constructor() {
@@ -35,25 +36,35 @@ class ApiService {
 
     async login(data: LoginRequest): Promise<ApiResponse<AuthResponse>> {
         try {
-            console.log("Отправка запроса на сервер с данными:", data);
             const response = await this.axiosInstance.post<ApiResponse<AuthResponse>>('/Auth/login', data);
-            console.log("Сырой ответ от сервера:", response);
-
-            if (!response || !response.data) {
-                console.error("Ошибка: сервер не вернул данных!");
-                return { success: false, error: "Ошибка сервера: пустой ответ" };
-            }
-
-            console.log("Обработанный ответ:", response.data);
 
             if (response.data.success && response.data.data) {
                 this.authToken = response.data.data.token;
+
                 if (isClient) {
-                    localStorage.setItem('authToken', response.data.data.token);
-                    localStorage.setItem('userId', String(response.data.data.userId)); // Сохраняем userId в localStorage
+                    // localStorage.setItem('authToken', response.data.data.token);
+                    localStorage.setItem('userId', String(response.data.data.userId));
+                    // Сохраняем все дополнительные поля
+                    if (response.data.data.companyName) {
+                        localStorage.setItem('companyName', response.data.data.companyName);
+                    }
+                    if (response.data.data.userSurname) {
+                        localStorage.setItem('userSurname', response.data.data.userSurname);
+                    }
+                    if (response.data.data.userName) {
+                        localStorage.setItem('userName', response.data.data.userName);
+                    }
+                    if (response.data.data.login) {
+                        localStorage.setItem('login', response.data.data.login);
+                    }
+                    if (response.data.data.email) {
+                        localStorage.setItem('email', response.data.data.email);
+                    }
+                    if (response.data.data.companyPosition) {
+                        localStorage.setItem('companyPosition', response.data.data.companyPosition);
+                    }
                 }
             }
-
             return response.data;
         } catch (error: unknown) {
             console.error("Ошибка при запросе:", error);
@@ -75,7 +86,7 @@ class ApiService {
     async register(
         userData: RegisterRequest,
         companyData?: { companyName: string; companyPosition: string }
-    ): Promise<ApiResponse<{ userId: number; token?: string }>> {
+    ): Promise<ApiResponse<AuthResponse>> {
         try {
             // Регистрация пользователя
             console.log("Данные для регистрации пользователя:", userData);
@@ -94,17 +105,17 @@ class ApiService {
             // Если данные компании предоставлены, регистрируем компанию
             if (companyData) {
                 console.log("Данные для регистрации компании:", companyData);
-                const companyResponse = await this.axiosInstance.post<ApiResponse<{ userId: number }>>('/company/register', companyData);
+                const companyResponse = await this.axiosInstance.post<ApiResponse<AuthResponse>>('/company/register', companyData);
                 console.log("Ответ от сервера (компания):", companyResponse.data);
 
                 if (!companyResponse.data.success || !companyResponse.data.data?.userId) {
                     return { success: false, error: companyResponse.data.error || "Ошибка регистрации компании" };
                 }
 
-                return { success: true, data: { userId: companyResponse.data.data.userId, token: this.authToken } };
+                return { success: true, data: { ...companyResponse.data.data, token: this.authToken } };
             }
 
-            return { success: true, data: { userId: userResponse.data.data.userId, token: this.authToken } };
+            return { success: true, data: { ...userResponse.data.data, token: this.authToken } };
         } catch (error) {
             console.log("Ошибка при регистрации:", error);
             if (axios.isAxiosError(error)) {
@@ -142,6 +153,7 @@ class ApiService {
         this.authToken = null;
         if (isClient) {
             localStorage.removeItem('authToken');
+            localStorage.removeItem('token')
         }
     }
 
@@ -159,30 +171,34 @@ class ApiService {
         }
     }
 
-    async PostProjectFile(
-        projectId: number,
-        file: File,
-        userId: number
-    ): Promise<ApiResponse<ProjectFile>> {
+    async postUserProject(project: Omit<Project, "id">): Promise<Project | undefined> {
         try {
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('userId', String(userId));
-
-            const response = await this.axiosInstance.post<ApiResponse<ProjectFile>>(
-                `/Project/${projectId}/files`,
-                formData,
-                {
-                    headers: {
-                        'Content-Type': 'multipart/form-data',
-                    },
-                }
-            );
-
-            console.log("Полученный файл:", response.data);
+            const response = await this.axiosInstance.post<Project>('/Project', project);
+            console.log("Созданный проект:", response.data);
             return response.data;
         } catch (error) {
-            console.error("Ошибка при загрузке файла:", error);
+            console.error("Ошибка при создании проекта:", error);
+            return undefined;
+        }
+    }
+
+    async putUserProject(projectId: number, project: Project): Promise<void> {
+        try {
+            await this.axiosInstance.put(`/Project/${projectId}`, project);
+            console.log("Проект обновлен");
+        } catch (error) {
+            console.error("Ошибка при обновлении проекта:", error);
+            throw error; // или просто возвращай, если хочешь обработать ошибку отдельно
+        }
+    }
+
+    async deleteUserProject(projectId: number): Promise<ApiResponse<Project>> {
+        try {
+            const response = await this.axiosInstance.delete<ApiResponse<Project>>(`/Project/${projectId}`);
+            console.log("Удаленный проект:", response.data);
+            return response.data;
+        } catch (error) {
+            console.error("Ошибка при удалении проекта:", error);
             return {
                 success: false,
                 error: axios.isAxiosError(error) ? error.response?.data?.message || error.message : 'Неизвестная ошибка',
@@ -233,9 +249,26 @@ class ApiService {
         }
     }
 
-    async DownloadFile(fileId: number): Promise<ApiResponse<string>> {
+    async PostProjectFile(
+        projectId: number,
+        file: File,
+        userId: number
+    ): Promise<ApiResponse<ProjectFile | undefined>> {
         try {
-            const response = await this.axiosInstance.get<ApiResponse<string>>(`/ProjectFile/${fileId}/download`);
+            const formData = new FormData();
+            formData.append('files', file);
+            formData.append('userId', String(userId));
+
+            const response = await this.axiosInstance.post<ApiResponse<ProjectFile | undefined>>(
+                `/Project/${projectId}/files`,
+                formData,
+                {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
+                }
+            );
+
             console.log("Полученный файл:", response.data);
             return response.data;
         } catch (error) {
@@ -244,6 +277,57 @@ class ApiService {
                 success: false,
                 error: axios.isAxiosError(error) ? error.response?.data?.message || error.message : 'Неизвестная ошибка',
             };
+        }
+    }
+
+    async DownloadFile(fileId: number): Promise<ApiResponse<Blob | undefined>> {
+        try {
+            const response = await this.axiosInstance.get<Blob>(`/Project/files/${fileId}/download`, {
+                responseType: 'blob',
+            });
+            console.log("Полученный файл (blob):", response.data);
+            return {
+                success: true,
+                data: response.data,
+            };
+        } catch (error) {
+            console.error("Ошибка при загрузке файла:", error);
+            return {
+                success: false,
+                error: axios.isAxiosError(error) ? error.response?.data?.message || error.message : 'Неизвестная ошибка',
+            };
+        }
+    }
+
+    async DeleteProjectFile(fileId: number): Promise<ApiResponse<ProjectFile | undefined>> {
+        try {
+            const response = await this.axiosInstance.delete<ApiResponse<ProjectFile>>(`/Project/files/${fileId}`);
+            console.log("Удаленный файл:", response.data);
+            return response.data;
+        } catch (error) {
+            console.error("Ошибка при удалении файла проекта:", error);
+            return {
+                success: false,
+                error: axios.isAxiosError(error) ? error.response?.data?.message || error.message : 'Неизвестная ошибка',
+            };
+        }
+    }
+
+    async RenameProjectFile(fileId: number, newFileName: string): Promise<void> {
+        try {
+            await this.axiosInstance.put(
+                `/Project/files/${fileId}/rename`,
+                { NewFileName: newFileName },
+                {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+            console.log("Имя файла обновлено");
+        } catch (error) {
+            console.error("Ошибка при обновлении имени файла:", error);
+            throw error;
         }
     }
 }

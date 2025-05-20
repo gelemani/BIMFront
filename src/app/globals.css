@@ -42,18 +42,19 @@ body {
     cursor: pointer;
     background-color: var(--button-bg);
     color: var(--text-color);
-    transition: background-color 0.3s, transform 0.2s;
+    /*transition: background-color 0.3s, transform 0.2s;*/
+    transition: background-color 0.3s;
 }
 
 .button:hover, button:hover {
     background-color: var(--button-hover);
-    transform: scale(1.05);
+    /*transform: scale(1.05);*/
 }
 
 .button.active, button:active {
     background-color: var(--accent-color);
     color: white;
-    transform: scale(1);
+    /*transform: scale(1);*/
 }
 
 /* Кастомная кнопка загрузки файла */
@@ -67,12 +68,13 @@ body {
     color: white;
     border-radius: 3px;
     text-align: center;
-    transition: background-color 0.3s, transform 0.2s;
+    /*transition: background-color 0.3s, transform 0.2s;*/
+    transition: background-color 0.3s;
 }
 
 .custom-file-upload:hover {
     background-color: var(--accent-color);
-    transform: scale(1.05);
+    /*transform: scale(1.05);*/
 }
 
 .custom-file-upload input[type="file"] {
@@ -155,14 +157,15 @@ textarea {
     border-radius: 10px;
     background-color: #2B2F36;
     color: var(--text-color);
-    transition: background-color 0.3s, color 0.3s, border-color 0.3s, transform 0.2s, box-shadow 0.2s;
+    /*transition: background-color 0.3s, color 0.3s, border-color 0.3s, transform 0.2s, box-shadow 0.2s;*/
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s, box-shadow 0.2s;
 }
 
 input[type="text"]:hover,
 input[type="password"]:hover,
 input[type="email"]:hover,
 textarea:hover {
-    transform: translateY(-2px) scale(1.02);
+    /*transform: translateY(-2px) scale(1.02);*/
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 

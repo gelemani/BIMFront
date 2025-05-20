@@ -7,19 +7,27 @@ import { useRouter } from "next/navigation";
 
 const Page = (): React.JSX.Element | null => {
     const router = useRouter();
+    const [companyName, setCompanyName] = useState<string>("");
     const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        // Fetch companyName from localStorage
+        if (typeof window !== "undefined") {
+            const storedCompanyName = localStorage.getItem("companyName") || "";
+            setCompanyName(storedCompanyName);
+        }
+    }, []);
 
     useEffect(() => {
         const isLoggedIn = localStorage.getItem("token") !== null;
         // console.log(localStorage.getItem("token"))
         // console.log("Проверка токена:", isLoggedIn);
-        if (!isLoggedIn) {
-            // router.push("/auth/");
-            null;
+        if (isLoggedIn) {
+            router.push(`/projects?companyName=${encodeURIComponent(companyName ?? "")}`);
         } else {
             setLoading(false);
         }
-    }, [router]);
+    }, [companyName, router]);
 
     if (loading) return null;
 

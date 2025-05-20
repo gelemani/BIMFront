@@ -47,8 +47,30 @@ export function LoginPage() {
 
                 if (response.success && response.data) {
                     setIsAuthenticated(true);
-                    // router.push("/projects");
-                    router.push(`/projects?companyName=${encodeURIComponent(registerData.companyName)}`);
+                    // Ensure all fields are stored as strings and handle undefined values
+                    const {
+                        companyName,
+                        userSurname,
+                        userName,
+                        login,
+                        email,
+                        companyPosition
+                    }: {
+                        companyName?: string,
+                        userSurname?: string,
+                        userName?: string,
+                        login?: string,
+                        email?: string,
+                        companyPosition?: string
+                    } = response.data;
+
+                    localStorage.setItem('companyName', companyName ?? "");
+                    localStorage.setItem('userSurname', userSurname ?? "");
+                    localStorage.setItem('userName', userName ?? "");
+                    localStorage.setItem('login', login ?? "");
+                    localStorage.setItem('email', email ?? "");
+                    localStorage.setItem('companyPosition', companyPosition ?? "");
+                    router.push(`/projects?companyName=${encodeURIComponent(companyName ?? "")}`);
                 } else {
                     setToastMessage(response.error || "Ошибка авторизации");
                     setTimeout(() => setToastMessage(null), 3000);
@@ -107,8 +129,30 @@ export function LoginPage() {
 
             if (response.success && response.data) {
                 setIsAuthenticated(true);
-                // router.push("/projects");
-                router.push(`/projects?companyName=${encodeURIComponent(registerData.companyName)}`);
+                // Ensure all fields are stored as strings and handle undefined values
+                const {
+                    companyName,
+                    userSurname,
+                    userName,
+                    login,
+                    email,
+                    companyPosition
+                }: {
+                    companyName?: string,
+                    userSurname?: string,
+                    userName?: string,
+                    login?: string,
+                    email?: string,
+                    companyPosition?: string
+                } = response.data;
+
+                localStorage.setItem('companyName', companyName ?? "");
+                localStorage.setItem('userSurname', userSurname ?? "");
+                localStorage.setItem('userName', userName ?? "");
+                localStorage.setItem('login', login ?? "");
+                localStorage.setItem('email', email ?? "");
+                localStorage.setItem('companyPosition', companyPosition ?? "");
+                router.push(`/projects?companyName=${encodeURIComponent(companyName ?? "")}`);
             } else {
                 if (response.error === "User already exists") {
                     setErrors({ login: "Пользователь уже существует", email: "Email уже зарегистрирован" });

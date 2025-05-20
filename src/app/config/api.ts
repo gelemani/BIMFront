@@ -27,8 +27,14 @@ export interface RegisterRequest {
 }
 
 export interface AuthResponse {
-    token: string;
     userId: number;
+    token?: string;
+    companyName?: string;
+    userSurname?: string;
+    userName?: string;
+    login?: string;
+    email?: string;
+    companyPosition?: string;
 }
 
 export interface ApiResponse<T> {
