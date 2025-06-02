@@ -21,10 +21,7 @@ const nextConfig: NextConfig = {
 
         return config;
     },
-    experimental: {
-        appDir: true,
-        turbo: true,
-    },
+    experimental: {},
 };
 
 export default nextConfig;

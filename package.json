@@ -37,6 +37,7 @@
     "@types/three": "^0.172.0",
     "@types/xlsx": "^0.0.35",
     "copy-webpack-plugin": "^12.0.2",
+    "eslint": "^9.28.0",
     "eslint-config-next": "15.1.5",
     "eslint-plugin-react": "^7.37.4",
     "postcss": "^8",
