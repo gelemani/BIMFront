@@ -52,6 +52,7 @@ export interface ProjectFile {
     createdAt: string;
     lastModified: string;
     contentType: string;
+    fileSize?: number;
 }
 
 export interface Project {

@@ -3,23 +3,23 @@
 import { useRouter } from 'next/navigation';
 
 const useFileViewer = () => {
-    const router = useRouter();
+    useRouter();
 
     const openFileInViewer = ({ file, url }: { file: File; url: string }) => {
+        console.log('Opening file in viewer:', { name: file.name, type: file.type, url });
         const ext = file.name.split('.').pop()?.toLowerCase();
         const target = ['ifc'].includes(ext || '') ? 'viewer' : 'docsViewer';
 
-        // Сначала открываем окно, чтобы избежать блокировки всплывающих окон браузером
-        const viewerWindow = window.open(`/${target}`, '_blank');
-        if (!viewerWindow) {
-            alert("Браузер заблокировал всплывающее окно. Разрешите его вручную.");
-            return;
-        }
-
-        // Затем сохраняем только метаданные и URL Blob в sessionStorage
+        // Сохраняем в sessionStorage сначала
         sessionStorage.setItem('viewerFileUrl', url);
         sessionStorage.setItem('viewerFileName', file.name);
         sessionStorage.setItem('viewerFileType', file.type);
+
+        // Потом открываем окно
+        const viewerWindow = window.open(`/${target}`, '_blank');
+        if (!viewerWindow) {
+            alert("Браузер заблокировал всплывающее окно. Разрешите его вручную.");
+        }
     };
 
     return { openFileInViewer };

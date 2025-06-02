@@ -37,6 +37,7 @@ const Header: React.FC<HeaderProps> = ({ centralString}) => {
         }
     };
 
+    console.log("Header centralString:", centralString);
     return (
         <div
             style={{
@@ -57,9 +58,21 @@ const Header: React.FC<HeaderProps> = ({ centralString}) => {
                 boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
             }}
         >
-            <div style={{ flex: "0 0 auto" }}>
+            <button
+                style={{
+                    background: "none",
+                    border: "none",
+                    color: "white",
+                    fontSize: "1em",
+                    fontWeight: "bold",
+                    cursor: "pointer",
+                    padding: 0
+                }}
+                onClick={() => router.push(`/projects?companyName=${encodeURIComponent(companyName ?? "")}`)}
+                title="На главную"
+            >
                 SodaBIM
-            </div>
+            </button>
 
             <div
                 style={{

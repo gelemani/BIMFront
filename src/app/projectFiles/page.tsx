@@ -26,7 +26,7 @@ const Page = (): React.JSX.Element => {
     const [searchTerm, setSearchTerm] = useState<string>("");
     const [companyName, setCompanyName] = useState<string>("");
     const [userName, setUserName] = useState<string>("");
-    const [userMenuOpen, setUserMenuOpen] = useState(false);
+    const [userMenuOpen, MenuOpen] = useState(false);
     const { openFileInViewer } = useFileViewer();
     const [error, setError] = useState<string | null>(null);
     const searchInputText: string = 'Поиск файла...';
@@ -45,9 +45,9 @@ const Page = (): React.JSX.Element => {
             const id = Number(localStorage.getItem("projectId")) || 0;
             const title = localStorage.getItem("projectTitle") || "";
             const userName = localStorage.getItem("userName") || "";
-            const storedCompanyName = localStorage.getItem("companyName") || "";
+            const companyName = localStorage.getItem("companyName") || "";
             setUserName(userName);
-            setCompanyName(storedCompanyName);
+            setCompanyName(companyName);
             setCurrentProjectId(id);
             setCurrentProjectTitle(title);
         }
@@ -114,6 +114,43 @@ const Page = (): React.JSX.Element => {
         return () => window.removeEventListener("mousedown", handleMouseDown);
     }, []);
 
+    useEffect(() => {
+        const fetchZipAndSetFileSizes = async () => {
+            if (!currentProjectId) return;
+
+            try {
+                const result = await apiService.DownloadFilesZip(currentProjectId);
+                if (!result.success || !result.data) {
+                    console.error("Ошибка при загрузке zip-файла");
+                    return;
+                }
+
+                const zip = await JSZip.loadAsync(result.data);
+                const sizesMap: Record<string, number> = {};
+                await Promise.all(
+                    Object.values(zip.files).map(async zipEntry => {
+                        if (!zipEntry.dir) {
+                            const content = await zipEntry.async("uint8array");
+                            sizesMap[zipEntry.name] = content.length;
+                        }
+                    })
+                );
+
+                setProjectFiles(prev =>
+                    prev.map(pf => ({
+                        ...pf,
+                        fileSize: sizesMap[pf.fileName] ?? pf.fileSize
+                    }))
+                );
+            } catch (err) {
+                console.error("Ошибка при обработке zip-файла:", err);
+            }
+        };
+
+        fetchZipAndSetFileSizes();
+    }, [currentProjectId]);
+
+
     const filteredFiles = projectFiles.filter(file =>
         file.fileName.toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -145,29 +182,57 @@ const Page = (): React.JSX.Element => {
     };
 
     // Обработка открытия файла из контекстного меню
-    const handleOpenFile = async (file: ProjectFile) => {
-        setContextMenuPos(null);
-        setSelectedFileId(null);
+    // const handleOpenFile = async (file: ProjectFile) => {
+    //     setContextMenuPos(null);
+    //     setSelectedFileId(null);
+    //
+    //     // Сначала пытаемся взять файл из кеша
+    //     let fileToOpen = fileCacheRef.current.get(file.id);
+    //
+    //     if (!fileToOpen) {
+    //         const result = await apiService.DownloadFile(file.id);
+    //         if (result.success && result.data) {
+    //             const blobData = result.data;
+    //             fileToOpen = new File([blobData], file.fileName.trim(), { type: file.contentType || "application/octet-stream" });
+    //             fileCacheRef.current.set(file.id, fileToOpen);
+    //         } else {
+    //             console.error("Не удалось загрузить файл:", result.error);
+    //             return;
+    //         }
+    //     }
+    //
+    //     if (fileToOpen) {
+    //         const objectUrl = URL.createObjectURL(fileToOpen);
+    //         openFileInViewer({ file: fileToOpen, url: objectUrl });
+    //         // revokeObjectURL теперь вызывается безопасно после закрытия файла в DocsViewerPage
+    //     }
+    // };
 
-        // Сначала пытаемся взять файл из кеша
-        let fileToOpen = fileCacheRef.current.get(file.id);
 
-        if (!fileToOpen) {
-            const result = await apiService.DownloadFile(file.id);
-            if (result.success && result.data) {
-                const blobData = result.data;
-                fileToOpen = new File([blobData], file.fileName.trim(), { type: file.contentType || "application/octet-stream" });
-                fileCacheRef.current.set(file.id, fileToOpen);
-            } else {
-                console.error("Не удалось загрузить файл:", result.error);
+    const handleOpenZipFile = async (projectId: number, file: ProjectFile) => {
+        try {
+            const result = await apiService.DownloadFilesZip(projectId);
+            if (!result.success || !result.data) {
+                console.error("Ошибка при загрузке zip-файла");
                 return;
             }
-        }
 
-        if (fileToOpen) {
-            const objectUrl = URL.createObjectURL(fileToOpen);
-            openFileInViewer({ file: fileToOpen, url: objectUrl });
-            // revokeObjectURL теперь вызывается безопасно после закрытия файла в DocsViewerPage
+            const zip = await JSZip.loadAsync(result.data);
+            const fileName = file?.fileName;
+            const zipEntry = zip.file(fileName);
+            if (!zipEntry) {
+                console.warn("Файл не найден в архиве:", fileName);
+                return;
+            }
+
+            if (!zipEntry.dir) {
+                const content = await zipEntry.async("blob");
+                const openedFile = new File([content], fileName, { type: "application/octet-stream" });
+                const objectUrl = URL.createObjectURL(openedFile);
+                openFileInViewer({ file: openedFile, url: objectUrl });
+            }
+        } catch (err) {
+            console.error("Ошибка при работе с zip-файлом:", err);
         }
     };
 
@@ -249,7 +314,7 @@ const Page = (): React.JSX.Element => {
                                 <div>Имя файла</div>
                                 <div>Дата изменения</div>
                                 <div>Тип</div>
-                                <div>Данные</div>
+                                <div>Объём</div>
                             </div>
                             {files.length === 0 ? (
                                 <p className="text-red-500 mb-6">Нет файлов в этом проекте.</p>
@@ -276,7 +341,7 @@ const Page = (): React.JSX.Element => {
                                         <div>{truncateFileName(file.fileName)}</div>
                                         <div>{new Date(file.lastModified).toLocaleString()}</div>
                                         <div>{file.contentType || defineContent(file.fileName)}</div>
-                                        <div className="truncate">{file.fileData}</div>
+                                        <div>{(file.fileSize ? (file.fileSize / 1024).toFixed(2) : "0.00")} KB</div>
                                     </div>
                                 ))
                             )}
@@ -311,7 +376,7 @@ const Page = (): React.JSX.Element => {
                                 cursor: "pointer",
                                 borderBottom: "1px solid #eee",
                             }}
-                            onClick={() => handleOpenFile(file)}
+                            onClick={() => handleOpenZipFile(currentProjectId, file)}
                         >
                             Открыть
                         </div>

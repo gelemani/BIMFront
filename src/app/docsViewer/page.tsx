@@ -3,11 +3,22 @@
 import React, { JSX, useEffect, useState } from 'react';
 import mammoth from 'mammoth';
 import * as XLSX from 'xlsx';
+import header from "@/app/components/header";
+import Header from "@/app/components/header";
 
 export default function DocsViewerPage() {
     const [content, setContent] = useState<JSX.Element | null>(null);
+    const [companyName, setCompanyName] = useState<string>("");
 
     const [name, setName] = useState<string>('');
+
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            const storedCompanyName = localStorage.getItem("companyName") || "";
+            setCompanyName(storedCompanyName);
+        }
+    }, []);
+
     useEffect(() => {
         const fileUrl = sessionStorage.getItem('viewerFileUrl');
         const name = (sessionStorage.getItem('viewerFileName') as string) ?? '';
@@ -30,7 +41,8 @@ export default function DocsViewerPage() {
                     });
                 } else if (extension === 'xlsx') {
                     const data = new Uint8Array(arrayBuffer);
-                    const workbook = XLSX.read(data, { type: 'array' });
+                    const workbook = XLSX.read(
+                        data, { type: 'array' });
                     const sheet = workbook.Sheets[workbook.SheetNames[0]];
                     const rows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
@@ -78,10 +90,13 @@ export default function DocsViewerPage() {
     }, []);
 
     return (
-        <div style={{ padding: 20 }}>
+        <>
+        <Header centralString={companyName}/>
+        <div style={{ marginTop: "44px", padding: 20 }}>
             <h2 style={{ fontSize: '2rem', textAlign: 'center' }}>{name}</h2>
             <h1></h1>
             {content}
         </div>
+    </>
     );
 }

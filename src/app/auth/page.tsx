@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { apiService } from "@/app/services/api.service";
 import { useRouter } from "next/navigation";
 
@@ -17,6 +17,17 @@ export function LoginPage() {
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const [, setIsAuthenticated] = useState(false);
     const [activeTab, setActiveTab] = useState<"login" | "register">("login");
+
+    // userId state for future reactive use
+    const [userId, setUserId] = useState<string | null>(null);
+
+    useEffect(() => {
+        // On mount, read userId from localStorage if exists
+        const storedUserId = localStorage.getItem('userId');
+        if (storedUserId) {
+            setUserId(storedUserId);
+        }
+    }, []);
 
     const [loginData, setLoginData] = useState({ username: "", password: "" });
     const handleLoginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -54,22 +65,26 @@ export function LoginPage() {
                         userName,
                         login,
                         email,
-                        companyPosition
+                        companyPosition,
+                        userId
                     }: {
                         companyName?: string,
                         userSurname?: string,
                         userName?: string,
                         login?: string,
                         email?: string,
-                        companyPosition?: string
+                        companyPosition?: string,
+                        userId?: number
                     } = response.data;
 
                     localStorage.setItem('companyName', companyName ?? "");
+                    console.log("COmpany name: ", companyName);
                     localStorage.setItem('userSurname', userSurname ?? "");
                     localStorage.setItem('userName', userName ?? "");
                     localStorage.setItem('login', login ?? "");
                     localStorage.setItem('email', email ?? "");
                     localStorage.setItem('companyPosition', companyPosition ?? "");
+                    localStorage.setItem('userId', String(userId ?? ""));
                     router.push(`/projects?companyName=${encodeURIComponent(companyName ?? "")}`);
                 } else {
                     setToastMessage(response.error || "Ошибка авторизации");
@@ -136,14 +151,16 @@ export function LoginPage() {
                     userName,
                     login,
                     email,
-                    companyPosition
+                    companyPosition,
+                    userId
                 }: {
                     companyName?: string,
                     userSurname?: string,
                     userName?: string,
                     login?: string,
                     email?: string,
-                    companyPosition?: string
+                    companyPosition?: string,
+                    userId?: number
                 } = response.data;
 
                 localStorage.setItem('companyName', companyName ?? "");
@@ -152,6 +169,7 @@ export function LoginPage() {
                 localStorage.setItem('login', login ?? "");
                 localStorage.setItem('email', email ?? "");
                 localStorage.setItem('companyPosition', companyPosition ?? "");
+                localStorage.setItem('userId', String(userId ?? ""));
                 router.push(`/projects?companyName=${encodeURIComponent(companyName ?? "")}`);
             } else {
                 if (response.error === "User already exists") {

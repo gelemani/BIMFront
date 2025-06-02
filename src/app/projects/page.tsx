@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { apiService } from "@/app/services/api.service";
 import { Project } from "@/app/config/api";
 import Header from "@/app/components/header";
@@ -35,6 +35,7 @@ const ProjectsPage = ({ onSelectProject = () => {} }: ProjectsPageProps) => {
     });
     const [companyName, setCompanyName] = useState<string>(""); // companyName state
     const [userName, setUserName] = useState<string>(""); // userName state
+    const searchParams = useSearchParams();
     console.log("Company Name:", companyName);
 
     const handleMenuToggle = (id: number) => {
@@ -48,12 +49,20 @@ const ProjectsPage = ({ onSelectProject = () => {} }: ProjectsPageProps) => {
     );
 
     useEffect(() => {
-        // Fetch companyName from localStorage
+        // Fetch companyName from localStorage or query param
         if (typeof window !== "undefined") {
             const userName = localStorage.getItem("userName") || "";
-            const storedCompanyName = localStorage.getItem("companyName") || "";
+            const storedCompanyName = localStorage.getItem("companyName");
+            const queryCompanyName = searchParams.get("companyName");
+
+            const finalCompanyName =
+                queryCompanyName && queryCompanyName !== "null" && queryCompanyName !== "undefined"
+                    ? queryCompanyName
+                    : storedCompanyName || "";
+
+            console.log("Query company:", queryCompanyName, "Stored:", storedCompanyName, "Final:", finalCompanyName);
             setUserName(userName);
-            setCompanyName(storedCompanyName);
+            setCompanyName(finalCompanyName);
         }
         const fetchProjects = async () => {
             const userIdRaw = localStorage.getItem("userId");
@@ -83,6 +92,10 @@ const ProjectsPage = ({ onSelectProject = () => {} }: ProjectsPageProps) => {
     };
 
     const handleCreateProject = async (formData: { title: string; accessLevel: string }) => {
+        if (!formData.title.trim()) {
+            alert("Название проекта не может быть пустым");
+            return;
+        }
         const userId = parseInt(localStorage.getItem("userId") || "0", 10);
         const now = new Date().toISOString();
         const newProjectData = {
@@ -118,6 +131,11 @@ const ProjectsPage = ({ onSelectProject = () => {} }: ProjectsPageProps) => {
     const handleUpdateProject = async () => {
         if (editingProjectId === null) return;
 
+        if (!newProject.title.trim()) {
+            alert("Название проекта не может быть пустым");
+            return;
+        }
+
         const updatedProject: Project = {
             ...newProject,
             id: editingProjectId,
@@ -147,7 +165,7 @@ const ProjectsPage = ({ onSelectProject = () => {} }: ProjectsPageProps) => {
         }
     };
 
-    // Удаление проекта: после успешного удаления получаем свежий список проектов и обновляем состояние
+    // Удаление проекта: после успешного удаления обновляем состояние локально
     const handleDeleteProject = async (id: number) => {
         const confirmed = confirm("Удалить проект?");
         if (!confirmed) return;
@@ -155,18 +173,10 @@ const ProjectsPage = ({ onSelectProject = () => {} }: ProjectsPageProps) => {
         try {
             const success = await apiService.deleteUserProject(id);
             if (success) {
-                const userId = parseInt(localStorage.getItem("userId") || "0");
-                const freshProjects = await apiService.getUserProjects(userId);
-
-                // Проверяем, что freshProjects — это массив
-                if (Array.isArray(freshProjects)) {
-                    setProjects(freshProjects);
-                } else if (freshProjects.success && freshProjects.data) {
-                    // Если возвращается ApiResponse с data
-                    setProjects(freshProjects.data);
-                } else {
-                    console.warn("Не удалось получить свежие проекты после удаления");
-                }
+                console.log("Удаляю проект с id:", id);
+                console.log("Текущие проекты:", projects);
+                setProjects(prev => prev.filter(project => Number(project.id) !== Number(id)));
+                setSearchTerm("");
                 setActiveMenuId(null);
             }
         } catch (error) {
@@ -264,7 +274,7 @@ const ProjectsPage = ({ onSelectProject = () => {} }: ProjectsPageProps) => {
                                             <p><b>Создан:</b> {new Date(proj.createdAt).toLocaleDateString()}</p>
                                             <p><b>Изменён:</b> {new Date(proj.lastModified).toLocaleDateString()}</p>
                                             <p><b>Доступ:</b> {proj.accessLevel}</p>
-                                            <p><b>Файлов:</b> {proj.projectFiles.length}</p>
+                                            {/*<p><b>Файлов:</b> {proj.projectFiles.length}</p>*/}
                                         </div>
                                     </div>
                                 </div>

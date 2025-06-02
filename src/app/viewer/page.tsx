@@ -1,25 +1,44 @@
 'use client';
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Viewer from "@/app/components/viewer";
+import Header from "@/app/components/header";
 
 const ViewerPage = () => {
     const [file, setFile] = useState<File | null>(null);
+    const [companyName, setCompanyName] = useState<string>("");
 
     useEffect(() => {
-        const data = sessionStorage.getItem("viewerFile");
-        if (!data) return;
-
-        try {
-            const parsed = JSON.parse(data);
-            const blob = new Blob([Uint8Array.from(parsed.data)], { type: parsed.type });
-            const fileFromSession = new File([blob], parsed.name, { type: parsed.type });
-            setFile(fileFromSession);
-        } catch (e) {
-            console.error("Ошибка при расшифровке файла из sessionStorage:", e);
+        if (typeof window !== "undefined") {
+            const storedCompanyName = localStorage.getItem("companyName") || "";
+            setCompanyName(storedCompanyName);
         }
     }, []);
 
-    return <Viewer isAuthenticated={true} file={file} />;
-};
+    useEffect(() => {
+        const fileUrl = sessionStorage.getItem("viewerFileUrl");
+        const fileName = sessionStorage.getItem("viewerFileName") || "model.ifc";
+        const fileType = sessionStorage.getItem("viewerFileType") || "model/ifc";
 
-export default ViewerPage;
+        if (!fileUrl) return;
+
+        fetch(fileUrl)
+            .then(res => res.blob())
+            .then(blob => {
+                const fileFromUrl = new File([blob], fileName, { type: fileType });
+                setFile(fileFromUrl);
+                console.log("IFC файл загружен по URL:", fileFromUrl);
+            })
+            .catch(e => {
+                console.error("Ошибка при загрузке файла по URL:", e);
+            });
+    }, []);
+
+    return (<>
+            <div style={{marginTop: "44px"}}>
+                <Viewer isAuthenticated={true} file={file}/>;
+            </div>
+        </>
+        )
+        };
+
+        export default ViewerPage;

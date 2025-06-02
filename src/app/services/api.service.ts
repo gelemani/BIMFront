@@ -280,12 +280,12 @@ class ApiService {
         }
     }
 
-    async DownloadFile(fileId: number): Promise<ApiResponse<Blob | undefined>> {
+    async DownloadFilesZip(projectId: number): Promise<ApiResponse<Blob | undefined>> {
         try {
-            const response = await this.axiosInstance.get<Blob>(`/Project/files/${fileId}/download`, {
+            const response = await this.axiosInstance.get<Blob>(`/Project/${projectId}/files/download`, {
                 responseType: 'blob',
             });
-            console.log("Полученный файл (blob):", response.data);
+            console.log("Полученные файлы (blob):", response.data);
             return {
                 success: true,
                 data: response.data,
@@ -298,6 +298,25 @@ class ApiService {
             };
         }
     }
+
+    // async DownloadFile(fileId: number): Promise<ApiResponse<Blob | undefined>> {
+    //     try {
+    //         const response = await this.axiosInstance.get<Blob>(`/Project/files/${fileId}/download`, {
+    //             responseType: 'blob',
+    //         });
+    //         console.log("Полученный файл (blob):", response.data);
+    //         return {
+    //             success: true,
+    //             data: response.data,
+    //         };
+    //     } catch (error) {
+    //         console.error("Ошибка при загрузке файла:", error);
+    //         return {
+    //             success: false,
+    //             error: axios.isAxiosError(error) ? error.response?.data?.message || error.message : 'Неизвестная ошибка',
+    //         };
+    //     }
+    // }
 
     async DeleteProjectFile(fileId: number): Promise<ApiResponse<ProjectFile | undefined>> {
         try {
